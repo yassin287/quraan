@@ -52,6 +52,95 @@ app.get("/", function (req, res) {
 		}
 	});
 });
+
+// New route for surah list
+app.get("/surahs", (req, res) => {
+	let options = { json: true };
+	request("http://api.alquran.cloud/v1/surah", options, (error, response, body) => {
+		if (error) {
+			return console.log(error);
+		}
+		if (!error && response.statusCode == 200) {
+			res.render("surahs", {
+				surahs: body.data
+			});
+		}
+	});
+});
+
+// New route for search
+app.get("/search", (req, res) => {
+	let options = { json: true };
+	request("http://api.alquran.cloud/v1/surah", options, (error, response, body) => {
+		if (error) {
+			return console.log(error);
+		}
+		if (!error && response.statusCode == 200) {
+			res.render("search", {
+				surahLinks: body.data
+			});
+		}
+	});
+});
+
+// Search API endpoint
+app.post("/api/search", async (req, res) => {
+	const searchTerm = req.body.searchTerm;
+	if (!searchTerm || searchTerm.trim() === '') {
+		return res.json({ results: [] });
+	}
+
+	// Normalize Arabic text by removing diacritics
+	const normalizeArabic = (text) => {
+		return text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '');
+	};
+
+	const normalizedSearch = normalizeArabic(searchTerm.trim());
+	let allResults = [];
+
+	try {
+		// Search through all surahs
+		const searchPromises = [];
+		for (let i = 1; i <= 114; i++) {
+			const url = `https://api.alquran.cloud/v1/surah/${i}/ar.muyassar`;
+			const promise = new Promise((resolve) => {
+				request(url, { json: true }, (error, response, body) => {
+					if (!error && response && response.statusCode == 200) {
+						const surahData = body.data;
+						const surahResults = [];
+						surahData.ayahs.forEach(ayah => {
+							const normalizedAyah = normalizeArabic(ayah.text);
+							if (normalizedAyah.includes(normalizedSearch)) {
+								surahResults.push({
+									text: ayah.text,
+									surahName: surahData.name,
+									surahNumber: surahData.number,
+									ayahNumber: ayah.numberInSurah,
+									juz: ayah.juz,
+									page: ayah.page
+								});
+							}
+						});
+						resolve(surahResults);
+					} else {
+						resolve([]);
+					}
+				});
+			});
+			searchPromises.push(promise);
+		}
+
+		// Wait for all requests to complete
+		const results = await Promise.all(searchPromises);
+		allResults = results.flat();
+		
+		res.json({ results: allResults.slice(0, 50) }); // Limit to 50 results
+	} catch (error) {
+		console.error('Search error:', error);
+		res.status(500).json({ error: 'حدث خطأ أثناء البحث' });
+	}
+});
+
 app.get("/surah/:choosenSurah", (req, res) => {
 	let choosenSurah = req.params.choosenSurah.trim();
 	let url = `https://api.alquran.cloud/v1/surah/${choosenSurah}/editions/quran-uthmani,ar.muyassar,ar.alafasy`;

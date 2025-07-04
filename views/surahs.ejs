@@ -1,0 +1,66 @@
+<nav class="navbar navbar-expand-lg navbar-light">
+	<div class="container-xxl">
+		<a class="navbar-brand d-flex" href="/">
+			<i class="fas fa-mosque" style="margin-left: 10px; font-size: 1.8rem;"></i>
+			 القرآن الكريم
+		</a>
+		<button
+			class="navbar-toggler"
+			type="button"
+			data-bs-toggle="collapse"
+			data-bs-target="#navbarNav"
+			aria-controls="navbarNav"
+			aria-expanded="false"
+			aria-label="Toggle navigation"
+		>
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="collapse navbar-collapse" id="navbarNav">
+			<ul class="navbar-nav">
+				<li class="nav-item me-3">
+					<a class="nav-link" href="/">الرئيسية</a>
+				</li>
+				<li class="nav-item me-3">
+					<a class="nav-link active" aria-current="page" href="/surahs">السور</a>
+				</li>
+				<li class="nav-item me-3">
+					<a class="nav-link" href="/search">البحث</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+</nav>
+
+<div class="container my-5">
+	<div class="row justify-content-center">
+		<div class="col-12">
+			<h1 class="text-center mb-4" style="color: #ffd700; font-family: 'Quranic';">سور القرآن الكريم</h1>
+			
+			<div class="surah-grid">
+				<% surahs.forEach(surah => { %>
+				<a href="/surah/<%= surah.number %>" class="surah-card">
+					<div class="surah-number"><%= surah.number %></div>
+					<div class="surah-name"><%= surah.name %></div>
+					<div class="surah-info">
+						<span class="surah-type">
+							<%= surah.revelationType === 'Meccan' ? 'مكية' : 'مدنية' %>
+						</span>
+						<span class="surah-verses"><%= surah.numberOfAyahs %> آية</span>
+					</div>
+					<div class="surah-info">
+						<span style="color: #ffffff; font-size: 0.9rem;">
+							<%= surah.englishName %>
+						</span>
+					</div>
+				</a>
+				<% }); %>
+			</div>
+		</div>
+	</div>
+</div>
+
+<footer class="py-3 mt-5">
+	<div class="container text-center">
+		<p>&copy; Yassin Moustafa 2025 - <a href="https://github.com/yassin287" target="_blank" class="github-link">GitHub</a></p>
+	</div>
+</footer>
