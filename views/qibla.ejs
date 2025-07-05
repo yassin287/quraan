@@ -49,45 +49,57 @@
 				<div id="location-info" class="mb-4 text-center">
 					<h5 class="location-title">الموقع الحالي</h5>
 					<p id="coordinates" class="location-text">جاري تحديد الموقع...</p>
-				</div>
-
-					<div class="compass-container position-relative d-flex justify-content-center align-items-center mb-4">
-						<div class="compass-outer">
-							<div class="compass-inner" id="compass">
-								<div class="compass-face">
-									<!-- Compass directions -->
-									<div class="direction north">ش</div>
-									<div class="direction east">ق</div>
-									<div class="direction south">ج</div>
-									<div class="direction west">غ</div>
-									
-									<!-- Degree markers -->
-									<div class="degree-markers">
-										<div class="marker" style="transform: rotate(0deg)">0°</div>
-										<div class="marker" style="transform: rotate(90deg)">90°</div>
-										<div class="marker" style="transform: rotate(180deg)">180°</div>
-										<div class="marker" style="transform: rotate(270deg)">270°</div>
-									</div>
-									
-									<!-- Qibla needle -->
-									<div class="qibla-needle" id="qibla-needle">
-										<div class="needle-pointer">
-											<i class="fas fa-location-arrow"></i>
-										</div>
-									</div>
-									
-									<!-- Device compass needle -->
-									<div class="device-needle" id="device-needle">
-										<div class="needle-head"></div>
-										<div class="needle-tail"></div>
-									</div>
-									
-									<!-- Center dot -->
-									<div class="compass-center"></div>
+				</div>				<div class="compass-container position-relative d-flex justify-content-center align-items-center mb-4">
+					<div class="compass-outer">
+						<div class="compass-inner" id="compass">
+							<div class="compass-face">
+								<!-- Compass tick marks -->
+								<div class="compass-ticks">
+									<!-- Major ticks every 30 degrees -->
+									<div class="tick major" style="transform: rotate(0deg)"><span>N</span></div>
+									<div class="tick major" style="transform: rotate(30deg)"><span>30</span></div>
+									<div class="tick major" style="transform: rotate(60deg)"><span>60</span></div>
+									<div class="tick major" style="transform: rotate(90deg)"><span>E</span></div>
+									<div class="tick major" style="transform: rotate(120deg)"><span>120</span></div>
+									<div class="tick major" style="transform: rotate(150deg)"><span>150</span></div>
+									<div class="tick major" style="transform: rotate(180deg)"><span>S</span></div>
+									<div class="tick major" style="transform: rotate(210deg)"><span>210</span></div>
+									<div class="tick major" style="transform: rotate(240deg)"><span>240</span></div>
+									<div class="tick major" style="transform: rotate(270deg)"><span>W</span></div>
+									<div class="tick major" style="transform: rotate(300deg)"><span>300</span></div>
+									<div class="tick major" style="transform: rotate(330deg)"><span>330</span></div>
 								</div>
+								
+								<!-- Compass cardinal directions -->
+								<div class="cardinal-directions">
+									<div class="cardinal north">ش</div>
+									<div class="cardinal east">ق</div>
+									<div class="cardinal south">ج</div>
+									<div class="cardinal west">غ</div>
+								</div>
+								
+								<!-- Qibla sector (shaded area) -->
+								<div class="qibla-sector" id="qibla-sector">
+									<div class="sector-fill"></div>
+								</div>
+								
+								<!-- Qibla arrow (Google-style) -->
+								<div class="qibla-arrow" id="qibla-arrow">
+									<div class="arrow-body"></div>
+									<div class="arrow-head"></div>
+								</div>
+								
+								<!-- Device orientation indicator -->
+								<div class="device-indicator" id="device-indicator">
+									<div class="indicator-dot"></div>
+								</div>
+								
+								<!-- Center circle -->
+								<div class="compass-center"></div>
 							</div>
 						</div>
 					</div>
+				</div>
 
 					<div class="compass-info">
 						<div class="row text-center">
@@ -344,19 +356,26 @@ class AdvancedQiblaCompass {
 	}
 
 	updateDeviceNeedle() {
-		const needle = document.getElementById('device-needle');
-		if (needle) {
-			needle.style.transform = `rotate(${-this.deviceHeading}deg)`;
+		const indicator = document.getElementById('device-indicator');
+		if (indicator) {
+			indicator.style.transform = `translate(-50%, -50%) rotate(${-this.deviceHeading}deg)`;
 		}
 	}
 
 	updateQiblaNeedle() {
 		if (this.qiblaDirection === null) return;
 		
-		const needle = document.getElementById('qibla-needle');
-		if (needle) {
+		const arrow = document.getElementById('qibla-arrow');
+		const sector = document.getElementById('qibla-sector');
+		
+		if (arrow) {
 			const rotation = this.qiblaDirection - this.deviceHeading;
-			needle.style.transform = `rotate(${rotation}deg)`;
+			arrow.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+		}
+		
+		if (sector) {
+			const rotation = this.qiblaDirection - this.deviceHeading;
+			sector.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
 		}
 	}
 
@@ -476,9 +495,16 @@ document.addEventListener('DOMContentLoaded', () => {
 	margin: 2rem 0;
 }
 
-.compass-outer {
+.compass-wrapper {
 	width: 300px;
 	height: 300px;
+	position: relative;
+	margin: 0 auto;
+}
+
+.compass-outer {
+	width: 100%;
+	height: 100%;
 	border-radius: 50%;
 	background: linear-gradient(45deg, #333333, #2d2d2d);
 	box-shadow: 
@@ -500,18 +526,135 @@ document.addEventListener('DOMContentLoaded', () => {
 	overflow: hidden;
 }
 
-.compass-face {
+/* Tick marks around the compass */
+.tick-marks {
+	position: absolute;
+	top: 0;
+	left: 0;
 	width: 100%;
 	height: 100%;
-	position: relative;
 	border-radius: 50%;
 }
 
+.tick-marks::before,
+.tick-marks::after {
+	content: '';
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	background: conic-gradient(
+		from 0deg,
+		transparent 0deg,
+		transparent 7.5deg,
+		#b8860b 7.5deg,
+		#b8860b 8.5deg,
+		transparent 8.5deg,
+		transparent 22.5deg,
+		#b8860b 22.5deg,
+		#b8860b 23.5deg,
+		transparent 23.5deg,
+		transparent 37.5deg,
+		#b8860b 37.5deg,
+		#b8860b 38.5deg,
+		transparent 38.5deg,
+		transparent 52.5deg,
+		#b8860b 52.5deg,
+		#b8860b 53.5deg,
+		transparent 53.5deg,
+		transparent 67.5deg,
+		#b8860b 67.5deg,
+		#b8860b 68.5deg,
+		transparent 68.5deg,
+		transparent 82.5deg,
+		#b8860b 82.5deg,
+		#b8860b 83.5deg,
+		transparent 83.5deg,
+		transparent 97.5deg,
+		#b8860b 97.5deg,
+		#b8860b 98.5deg,
+		transparent 98.5deg,
+		transparent 112.5deg,
+		#b8860b 112.5deg,
+		#b8860b 113.5deg,
+		transparent 113.5deg,
+		transparent 127.5deg,
+		#b8860b 127.5deg,
+		#b8860b 128.5deg,
+		transparent 128.5deg,
+		transparent 142.5deg,
+		#b8860b 142.5deg,
+		#b8860b 143.5deg,
+		transparent 143.5deg,
+		transparent 157.5deg,
+		#b8860b 157.5deg,
+		#b8860b 158.5deg,
+		transparent 158.5deg,
+		transparent 172.5deg,
+		#b8860b 172.5deg,
+		#b8860b 173.5deg,
+		transparent 173.5deg,
+		transparent 187.5deg,
+		#b8860b 187.5deg,
+		#b8860b 188.5deg,
+		transparent 188.5deg,
+		transparent 202.5deg,
+		#b8860b 202.5deg,
+		#b8860b 203.5deg,
+		transparent 203.5deg,
+		transparent 217.5deg,
+		#b8860b 217.5deg,
+		#b8860b 218.5deg,
+		transparent 218.5deg,
+		transparent 232.5deg,
+		#b8860b 232.5deg,
+		#b8860b 233.5deg,
+		transparent 233.5deg,
+		transparent 247.5deg,
+		#b8860b 247.5deg,
+		#b8860b 248.5deg,
+		transparent 248.5deg,
+		transparent 262.5deg,
+		#b8860b 262.5deg,
+		#b8860b 263.5deg,
+		transparent 263.5deg,
+		transparent 277.5deg,
+		#b8860b 277.5deg,
+		#b8860b 278.5deg,
+		transparent 278.5deg,
+		transparent 292.5deg,
+		#b8860b 292.5deg,
+		#b8860b 293.5deg,
+		transparent 293.5deg,
+		transparent 307.5deg,
+		#b8860b 307.5deg,
+		#b8860b 308.5deg,
+		transparent 308.5deg,
+		transparent 322.5deg,
+		#b8860b 322.5deg,
+		#b8860b 323.5deg,
+		transparent 323.5deg,
+		transparent 337.5deg,
+		#b8860b 337.5deg,
+		#b8860b 338.5deg,
+		transparent 338.5deg,
+		transparent 352.5deg,
+		#b8860b 352.5deg,
+		#b8860b 353.5deg,
+		transparent 353.5deg,
+		transparent 360deg
+	);
+	mask: radial-gradient(circle, transparent 125px, white 125px, white 135px, transparent 135px);
+	-webkit-mask: radial-gradient(circle, transparent 125px, white 125px, white 135px, transparent 135px);
+}
+
+/* Cardinal directions */
 .direction {
 	position: absolute;
 	font-weight: bold;
 	font-size: 1.5rem;
 	color: #b8860b;
+	z-index: 2;
 }
 
 .direction.north {
@@ -539,91 +682,116 @@ document.addEventListener('DOMContentLoaded', () => {
 	transform: translateY(-50%);
 }
 
-.degree-markers .marker {
-	position: absolute;
-	font-size: 0.8rem;
-	color: #ffffff;
-	width: 30px;
-	text-align: center;
-	opacity: 0.7;
-}
-
-.degree-markers .marker:nth-child(1) {
-	top: 25px;
-	left: 50%;
-	transform: translateX(-50%);
-}
-
-.degree-markers .marker:nth-child(2) {
-	right: 25px;
-	top: 50%;
-	transform: translateY(-50%) rotate(-90deg);
-}
-
-.degree-markers .marker:nth-child(3) {
-	bottom: 25px;
-	left: 50%;
-	transform: translateX(-50%) rotate(180deg);
-}
-
-.degree-markers .marker:nth-child(4) {
-	left: 25px;
-	top: 50%;
-	transform: translateY(-50%) rotate(90deg);
-}
-
-.qibla-needle {
+/* Qibla sector (shaded area) */
+.qibla-sector {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 6px;
-	height: 100px;
-	background: linear-gradient(to top, transparent 40%, #b8860b);
-	transform-origin: bottom center;
-	transform: translate(-50%, -100%);
-	transition: transform 0.1s ease-out;
-	z-index: 3;
-	border-radius: 3px;
+	width: 100%;
+	height: 100%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	overflow: hidden;
+	z-index: 1;
 }
 
-.qibla-needle .needle-pointer {
+.qibla-sector::before {
+	content: '';
 	position: absolute;
-	top: -8px;
+	top: 0;
 	left: 50%;
-	transform: translateX(-50%);
-	color: #b8860b;
-	font-size: 1.4rem;
-	text-shadow: 0 0 5px rgba(184, 134, 11, 0.8);
-}
-
-.device-needle {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 4px;
-	height: 120px;
-	transform-origin: bottom center;
-	transform: translate(-50%, -100%);
-	transition: transform 0.05s ease-out;
-	z-index: 2;
-}
-
-.needle-head {
 	width: 0;
 	height: 0;
-	border-left: 4px solid transparent;
-	border-right: 4px solid transparent;
-	border-bottom: 60px solid #dc3545;
-	margin: 0 auto;
-	filter: drop-shadow(0 0 3px rgba(220, 53, 69, 0.5));
+	border-left: 140px solid transparent;
+	border-right: 140px solid transparent;
+	border-top: 140px solid rgba(184, 134, 11, 0.15);
+	transform: translateX(-50%);
+	transform-origin: bottom center;
+	transition: transform 0.3s ease;
 }
 
-.needle-tail {
+/* Google-style arrow */
+.qibla-arrow {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 5;
+	transition: transform 0.3s ease;
+}
+
+.arrow-body {
+	width: 8px;
+	height: 90px;
+	position: relative;
+	transform: translateY(-45px);
+}
+
+.arrow-head {
+	width: 0;
+	height: 0;
+	border-left: 8px solid transparent;
+	border-right: 8px solid transparent;
+	border-bottom: 20px solid #b8860b;
+	margin: 0 auto;
+	position: relative;
+	z-index: 3;
+	filter: drop-shadow(0 0 5px rgba(184, 134, 11, 0.8));
+}
+
+.arrow-head::after {
+	content: '';
+	position: absolute;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 6px solid transparent;
+	border-right: 6px solid transparent;
+	border-top: 15px solid #d4af37;
+}
+
+.arrow-shaft {
 	width: 4px;
-	height: 60px;
-	background: linear-gradient(to bottom, #6c757d, #495057);
+	height: 70px;
+	background: linear-gradient(to bottom, #b8860b, #d4af37);
 	margin: 0 auto;
 	border-radius: 2px;
+	box-shadow: 0 0 5px rgba(184, 134, 11, 0.5);
+}
+
+/* Device orientation indicator */
+.device-indicator {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 3;
+	transition: transform 0.1s ease;
+}
+
+.device-dot {
+	width: 12px;
+	height: 12px;
+	background: #dc3545;
+	border: 2px solid #ffffff;
+	border-radius: 50%;
+	box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
+	position: relative;
+}
+
+.device-dot::before {
+	content: '';
+	position: absolute;
+	top: -40px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 3px solid transparent;
+	border-right: 3px solid transparent;
+	border-bottom: 8px solid #dc3545;
 }
 
 .compass-center {
@@ -638,6 +806,52 @@ document.addEventListener('DOMContentLoaded', () => {
 	transform: translate(-50%, -50%);
 	z-index: 4;
 	box-shadow: 0 0 10px rgba(184, 134, 11, 0.5);
+}
+
+/* Accuracy status boxes */
+.perfect-box {
+	border-color: #28a745 !important;
+	box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3) !important;
+}
+
+.accurate-box {
+	border-color: #17a2b8 !important;
+	box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3) !important;
+}
+
+.good-box {
+	border-color: #ffc107 !important;
+	box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3) !important;
+}
+
+.close-box {
+	border-color: #fd7e14 !important;
+	box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3) !important;
+}
+
+.far-box {
+	border-color: #dc3545 !important;
+	box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+}
+
+.info-value.perfect {
+	color: #28a745 !important;
+}
+
+.info-value.accurate {
+	color: #17a2b8 !important;
+}
+
+.info-value.good {
+	color: #ffc107 !important;
+}
+
+.info-value.close {
+	color: #fd7e14 !important;
+}
+
+.info-value.far {
+	color: #dc3545 !important;
 }
 
 /* Info boxes */
@@ -729,6 +943,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		font-size: 2rem;
 	}
 	
+	.compass-wrapper {
+		width: 250px;
+		height: 250px;
+	}
+	
 	.compass-outer {
 		width: 250px;
 		height: 250px;
@@ -739,30 +958,33 @@ document.addEventListener('DOMContentLoaded', () => {
 		height: 230px;
 	}
 	
-	.qibla-needle {
-		height: 80px;
+	.tick-marks::before,
+	.tick-marks::after {
+		mask: radial-gradient(circle, transparent 105px, white 105px, white 115px, transparent 115px);
+		-webkit-mask: radial-gradient(circle, transparent 105px, white 105px, white 115px, transparent 115px);
 	}
 	
-	.device-needle {
-		height: 100px;
+	.qibla-sector::before {
+		border-left: 115px solid transparent;
+		border-right: 115px solid transparent;
+		border-top: 115px solid rgba(184, 134, 11, 0.15);
 	}
 	
-	.needle-head {
-		border-bottom: 50px solid #dc3545;
+	.arrow-body {
+		height: 70px;
 	}
 	
-	.needle-tail {
+	.arrow-shaft {
 		height: 50px;
-	}
-	
-	.qibla-btn, .qibla-btn-outline {
-		padding: 0.6rem 1rem;
-		font-size: 0.9rem;
-		margin: 0.2rem;
 	}
 }
 
 @media (max-width: 576px) {
+	.compass-wrapper {
+		width: 220px;
+		height: 220px;
+	}
+	
 	.compass-outer {
 		width: 220px;
 		height: 220px;
@@ -772,58 +994,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		width: 200px;
 		height: 200px;
 	}
-}
-
-/* Accuracy indicators */
-.accurate {
-	color: #28a745 !important;
-	font-weight: bold;
-}
-
-.good {
-	color: #ffc107 !important;
-	font-weight: bold;
-}
-
-.close {
-	color: #fd7e14 !important;
-	font-weight: bold;
-}
-
-.far {
-	color: #dc3545 !important;
-	font-weight: bold;
-}
-
-.accurate-box {
-	border-color: #28a745 !important;
-	box-shadow: 0 0 15px rgba(40, 167, 69, 0.3) !important;
-}
-
-.good-box {
-	border-color: #ffc107 !important;
-	box-shadow: 0 0 15px rgba(255, 193, 7, 0.3) !important;
-}
-
-.close-box {
-	border-color: #fd7e14 !important;
-	box-shadow: 0 0 15px rgba(253, 126, 20, 0.3) !important;
-}
-
-.far-box {
-	border-color: #dc3545 !important;
-	box-shadow: 0 0 15px rgba(220, 53, 69, 0.3) !important;
-}
-
-.perfect {
-	color: #00ff00 !important;
-	font-weight: bold;
-	text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-}
-
-.perfect-box {
-	border-color: #00ff00 !important;
-	box-shadow: 0 0 20px rgba(0, 255, 0, 0.4) !important;
-	background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
+	
+	.tick-marks::before,
+	.tick-marks::after {
+		mask: radial-gradient(circle, transparent 90px, white 90px, white 100px, transparent 100px);
+		-webkit-mask: radial-gradient(circle, transparent 90px, white 90px, white 100px, transparent 100px);
+	}
+	
+	.qibla-sector::before {
+		border-left: 100px solid transparent;
+		border-right: 100px solid transparent;
+		border-top: 100px solid rgba(184, 134, 11, 0.15);
+	}
 }
 </style>
