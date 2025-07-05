@@ -181,6 +181,12 @@ app.get("/surah/:choosenSurah", (req, res) => {
 		}
 	});
 });
+
+// Route for prayer times
+app.get("/prayer-times", (req, res) => {
+	res.render("prayer-times");
+});
+
 app.listen(process.env.PORT || 3000, function () {
 	console.log("server is running ON Port 3000");
 });
