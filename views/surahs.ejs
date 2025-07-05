@@ -36,9 +36,40 @@
 		<div class="col-12">
 			<h1 class="text-center mb-4" style="color: #ffd700; font-family: 'Quranic';">سور القرآن الكريم</h1>
 			
-			<div class="surah-grid">
+			<!-- Search and Filter Controls -->
+			<div class="search-filter-controls mb-4">
+				<div class="row align-items-center">
+					<div class="col-lg-6 col-md-8 col-sm-12 mb-3">
+						<div class="search-input-container">
+							<input type="text" id="surahSearch" class="surah-search-box" placeholder="ابحث عن السورة..." autocomplete="off">
+							<i class="fas fa-search search-icon"></i>
+						</div>
+					</div>
+					<div class="col-lg-6 col-md-4 col-sm-12 mb-3">
+						<div class="filter-buttons">
+							<button class="filter-btn active" data-filter="all">
+								<i class="fas fa-list"></i> جميع السور
+							</button>
+							<button class="filter-btn" data-filter="Meccan">
+								<i class="fas fa-kaaba"></i> مكية
+							</button>
+							<button class="filter-btn" data-filter="Medinan">
+								<i class="fas fa-mosque"></i> مدنية
+							</button>
+						</div>
+					</div>
+				</div>
+				<div class="search-results-info">
+					<span id="resultsCount">عرض جميع السور (114)</span>
+				</div>
+			</div>
+			
+			<div class="surah-grid" id="surahGrid">
 				<% surahs.forEach(surah => { %>
-				<a href="/surah/<%= surah.number %>" class="surah-card">
+				<a href="/surah/<%= surah.number %>" class="surah-card" 
+				   data-name="<%= surah.name %>" 
+				   data-english="<%= surah.englishName %>" 
+				   data-type="<%= surah.revelationType %>">
 					<div class="surah-number"><%= surah.number %></div>
 					<div class="surah-name"><%= surah.name %></div>
 					<div class="surah-info">
@@ -55,6 +86,15 @@
 				</a>
 				<% }); %>
 			</div>
+			
+			<!-- No Results Message -->
+			<div id="noResults" class="no-results" style="display: none;">
+				<div class="text-center">
+					<i class="fas fa-search" style="font-size: 3rem; color: #b8860b; margin-bottom: 20px;"></i>
+					<h3 style="color: #b8860b;">لم يتم العثور على نتائج</h3>
+					<p style="color: #ffffff;">جرب البحث بكلمات مختلفة أو امسح مربع البحث لعرض جميع السور</p>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>
@@ -64,3 +104,114 @@
 		<p>&copy; Yassin Moustafa 2025 - <a href="https://github.com/yassin287" target="_blank" class="github-link">GitHub</a></p>
 	</div>
 </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	const searchInput = document.getElementById('surahSearch');
+	const surahGrid = document.getElementById('surahGrid');
+	const filterButtons = document.querySelectorAll('.filter-btn');
+	const resultsCount = document.getElementById('resultsCount');
+	const noResults = document.getElementById('noResults');
+	const allSurahs = Array.from(document.querySelectorAll('.surah-card'));
+	
+	let currentFilter = 'all';
+	let currentSearch = '';
+	
+	// Function to normalize Arabic text by removing diacritics
+	function normalizeArabic(text) {
+		// Remove all Arabic diacritics (harakat/tashkeel)
+		return text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u06EF-\u06FF]/g, '');
+	}
+	
+	// Search functionality
+	searchInput.addEventListener('input', function() {
+		currentSearch = normalizeArabic(this.value.trim().toLowerCase());
+		filterAndSearch();
+	});
+	
+	// Filter functionality
+	filterButtons.forEach(button => {
+		button.addEventListener('click', function() {
+			// Remove active class from all buttons
+			filterButtons.forEach(btn => btn.classList.remove('active'));
+			// Add active class to clicked button
+			this.classList.add('active');
+			
+			currentFilter = this.getAttribute('data-filter');
+			filterAndSearch();
+		});
+	});
+	
+	function filterAndSearch() {
+		let visibleCount = 0;
+		let filteredSurahs = allSurahs;
+		
+		// Apply filter first
+		if (currentFilter !== 'all') {
+			filteredSurahs = allSurahs.filter(surah => 
+				surah.getAttribute('data-type') === currentFilter
+			);
+		}
+		
+		// Apply search
+		if (currentSearch) {
+			filteredSurahs = filteredSurahs.filter(surah => {
+				const arabicName = normalizeArabic(surah.getAttribute('data-name').toLowerCase());
+				const englishName = surah.getAttribute('data-english').toLowerCase();
+				return arabicName.includes(currentSearch) || englishName.includes(currentSearch);
+			});
+		}
+		
+		// Show/hide surahs
+		allSurahs.forEach(surah => {
+			if (filteredSurahs.includes(surah)) {
+				surah.style.display = 'block';
+				surah.style.animation = 'fadeIn 0.3s ease-in-out';
+				visibleCount++;
+			} else {
+				surah.style.display = 'none';
+			}
+		});
+		
+		// Update results count
+		updateResultsCount(visibleCount);
+		
+		// Show/hide no results message
+		if (visibleCount === 0) {
+			noResults.style.display = 'block';
+			surahGrid.style.display = 'none';
+		} else {
+			noResults.style.display = 'none';
+			surahGrid.style.display = 'grid';
+		}
+	}
+	
+	function updateResultsCount(count) {
+		let message = '';
+		
+		if (currentFilter === 'all' && !currentSearch) {
+			message = 'عرض جميع السور (114)';
+		} else if (currentFilter !== 'all' && !currentSearch) {
+			const filterName = currentFilter === 'Meccan' ? 'المكية' : 'المدنية';
+			message = `عرض السور ${filterName} (${count})`;
+		} else if (currentSearch && currentFilter === 'all') {
+			message = `نتائج البحث: ${count} سورة`;
+		} else {
+			const filterName = currentFilter === 'Meccan' ? 'المكية' : 'المدنية';
+			message = `نتائج البحث في السور ${filterName}: ${count} سورة`;
+		}
+		
+		resultsCount.textContent = message;
+	}
+	
+	// Add fade-in animation keyframes
+	const style = document.createElement('style');
+	style.textContent = `
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateY(10px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+	`;
+	document.head.appendChild(style);
+});
+</script>
