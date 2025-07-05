@@ -1004,14 +1004,16 @@
 
             displayCurrentDate() {
                 const today = new Date();
-                const gregorianDate = today.toLocaleDateString('ar-SA', {
+                
+                // Gregorian date in Arabic with proper formatting
+                const gregorianDate = today.toLocaleDateString('ar-EG', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
                     weekday: 'long'
                 });
                 
-                // Get Hijri date (simplified)
+                // Get proper Hijri date
                 const hijriDate = this.getHijriDate(today);
                 
                 document.getElementById('gregorian-date').textContent = gregorianDate;
@@ -1019,15 +1021,40 @@
             }
 
             getHijriDate(date) {
-                // Simplified Hijri date calculation
-                // In a real app, you'd use a proper Hijri calendar library
-                const hijriYear = Math.floor((date.getFullYear() - 622) * 1.030684);
-                const months = [
+                // More accurate Hijri date calculation
+                // Islamic calendar epoch: July 16, 622 CE (1 Muharram 1 AH)
+                const islamicEpoch = new Date(622, 6, 16); // Month is 0-indexed, so 6 = July
+                const diffTime = date.getTime() - islamicEpoch.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Islamic year is approximately 354.367 days
+                const daysPerYear = 354.367;
+                const hijriYear = Math.floor(diffDays / daysPerYear) + 1;
+                const dayOfYear = Math.floor(diffDays % daysPerYear);
+                
+                const hijriMonths = [
                     'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
                     'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
                 ];
-                const month = months[date.getMonth()];
-                return `${date.getDate()} ${month} ${hijriYear + 622}`;
+                
+                // Calculate month and day more accurately
+                let remainingDays = dayOfYear;
+                let monthIndex = 0;
+                
+                // Islamic months alternate between 30 and 29 days, with adjustments
+                const monthLengths = [30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29];
+                
+                for (let i = 0; i < 12; i++) {
+                    if (remainingDays < monthLengths[i]) {
+                        monthIndex = i;
+                        break;
+                    }
+                    remainingDays -= monthLengths[i];
+                }
+                
+                const dayOfMonth = Math.max(1, Math.min(30, remainingDays + 1));
+                
+                return `${Math.floor(dayOfMonth)} ${hijriMonths[monthIndex]} ${hijriYear} هـ`;
             }
 
             getUserLocation() {
