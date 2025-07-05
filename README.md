@@ -199,12 +199,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Sheikh Mishary Rashid Alafasy** for the beautiful recitation
 - **Open Source Community** for the amazing tools and libraries
 
-## 📞 Contact
-
-**Yassin Moustafa**
-- GitHub: [@yassin287](https://github.com/yassin287)
-- Project Link: [https://github.com/yassin287/quraan](https://github.com/yassin287/quraan)
-
 ## 🔄 Version History
 
 - **v1.0.0** - Initial release with core features
