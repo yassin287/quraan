@@ -2,12 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const request = require('request');
 
+console.log('🚀 Building full Quran Platform for GitHub Pages...\n');
+
 // Create docs directory for GitHub Pages
 if (!fs.existsSync('docs')) {
     fs.mkdirSync('docs');
+    console.log('✅ Created docs directory');
 }
 
-// Copy static assets to docs folder
+// Copy all static assets to docs folder
 const publicFiles = [
     'style.css',
     'bootstrap.min.css', 
@@ -19,7 +22,7 @@ const publicFiles = [
 publicFiles.forEach(file => {
     if (fs.existsSync(`public/${file}`)) {
         fs.copyFileSync(`public/${file}`, `docs/${file}`);
-        console.log(`Copied ${file}`);
+        console.log(`✅ Copied ${file}`);
     }
 });
 
@@ -31,98 +34,822 @@ if (fs.existsSync('public/images')) {
     fs.readdirSync('public/images').forEach(file => {
         fs.copyFileSync(`public/images/${file}`, `docs/images/${file}`);
     });
-    console.log('Copied images folder');
+    console.log('✅ Copied images folder');
 }
 
-// Create a simple index.html for GitHub Pages
-const indexHTML = `
-<!DOCTYPE html>
+// Create the main HTML template with all functionality
+const createFullHTML = () => {
+    return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>القرآن الكريم - Quran Platform</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="description" content="منصة القرآن الكريم - تطبيق حديث لقراءة واستكشاف القرآن الكريم مع التلاوة الصوتية والبحث المتقدم">
+    <meta name="keywords" content="القرآن, القرآن الكريم, قرآن, إسلام, تلاوة, تفسير, البحث في القرآن">
+    <meta name="author" content="Yassin Moustafa">
+    <title>القرآن الكريم - منصة حديثة لقراءة القرآن</title>
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yassin287.github.io/quraan/">
+    <meta property="og:title" content="القرآن الكريم - منصة حديثة لقراءة القرآن">
+    <meta property="og:description" content="تطبيق حديث وجميل لقراءة واستكشاف القرآن الكريم مع التلاوة الصوتية والبحث المتقدم">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://yassin287.github.io/quraan/">
+    <meta property="twitter:title" content="القرآن الكريم - منصة حديثة لقراءة القرآن">
+    <meta property="twitter:description" content="تطبيق حديث وجميل لقراءة واستكشاف القرآن الكريم مع التلاوة الصوتية والبحث المتقدم">
+    
+    <!-- Stylesheets -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/hd-quran-book-black-icon-transparent-background-116370457481jmbswlvix-removebg-preview.png">
 </head>
 <body>
+    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-xxl">
-            <a class="navbar-brand d-flex" href="/">
+            <a class="navbar-brand d-flex" href="#" onclick="showHome()">
                 <i class="fas fa-mosque" style="margin-left: 10px; font-size: 1.8rem;"></i>
                 القرآن الكريم
             </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item me-3">
+                        <a class="nav-link active" href="#" onclick="showHome()">الرئيسية</a>
+                    </li>
+                    <li class="nav-item me-3">
+                        <a class="nav-link" href="#" onclick="showSurahs()">السور</a>
+                    </li>
+                    <li class="nav-item me-3">
+                        <a class="nav-link" href="#" onclick="showSearch()">البحث</a>
+                    </li>
+                    <li class="nav-item me-3">
+                        <a class="nav-link" href="https://github.com/yassin287/quraan" target="_blank">
+                            <i class="fab fa-github"></i> GitHub
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </nav>
 
-    <div class="container my-5">
-        <main class="container-fluid d-flex justify-content-center align-items-center mb-5">
-            <div class="container ayah-container d-flex justify-content-center flex-column">
-                <div class="text-center">
-                    <h1 style="color: #b8860b; font-family: 'Quranic'; margin-bottom: 30px;">مرحباً بكم في منصة القرآن الكريم</h1>
-                    <p style="font-size: 1.5rem; color: #ffffff; margin-bottom: 30px;">
-                        تطبيق حديث وجميل لقراءة واستكشاف القرآن الكريم
-                    </p>
-                    <div style="margin-bottom: 30px;">
-                        <p style="font-family: 'Quranic'; font-size: 2rem; color: #d4af37;">
-                            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-                        </p>
-                    </div>
-                    <div class="row justify-content-center">
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100" style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border: 2px solid #b8860b;">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-book-open fa-3x mb-3" style="color: #b8860b;"></i>
-                                    <h5 style="color: #b8860b;">قراءة القرآن</h5>
-                                    <p style="color: #ffffff;">جميع السور بالنص العربي الأصيل</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100" style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border: 2px solid #b8860b;">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-volume-up fa-3x mb-3" style="color: #b8860b;"></i>
-                                    <h5 style="color: #b8860b;">التلاوة الصوتية</h5>
-                                    <p style="color: #ffffff;">بصوت الشيخ مشاري راشد العفاسي</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100" style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border: 2px solid #b8860b;">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-search fa-3x mb-3" style="color: #b8860b;"></i>
-                                    <h5 style="color: #b8860b;">البحث المتقدم</h5>
-                                    <p style="color: #ffffff;">بحث ذكي في القرآن الكريم</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <a href="https://github.com/yassin287/quraan" class="btn btn-lg" style="background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%); color: #000000; border: none; padding: 15px 30px; border-radius: 25px; font-weight: bold;">
-                            <i class="fab fa-github"></i> عرض المشروع على GitHub
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </main>
+    <!-- Main Content Container -->
+    <div id="mainContent">
+        <!-- Home Page Content will be loaded here -->
     </div>
 
+    <!-- Footer -->
     <footer class="py-3 mt-5">
         <div class="container text-center">
             <p>&copy; Yassin Moustafa 2025 - <a href="https://github.com/yassin287" target="_blank" class="github-link">GitHub</a></p>
-            <p style="color: #b8860b; font-family: 'Quranic';">
+            <p style="color: #b8860b; font-family: 'Quranic'; font-size: 1.1rem; margin-top: 15px;">
                 "وَنُنَزِّلُ مِنَ الْقُرْآنِ مَا هُوَ شِفَاءٌ وَرَحْمَةٌ لِّلْمُؤْمِنِينَ"
+            </p>
+            <p style="color: #ffffff; font-size: 0.9rem;">
+                "And We send down of the Quran that which is healing and mercy for the believers" - Quran 17:82
             </p>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let allSurahs = [];
+        let currentAyahAudio = null;
+        
+        // API base URL
+        const API_BASE = 'https://api.alquran.cloud/v1';
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSurahs();
+            showHome();
+        });
+        
+        // Load all surahs data
+        async function loadSurahs() {
+            try {
+                const response = await fetch(\`\${API_BASE}/surah\`);
+                const data = await response.json();
+                allSurahs = data.data;
+                console.log('✅ Loaded', allSurahs.length, 'surahs');
+            } catch (error) {
+                console.error('Error loading surahs:', error);
+            }
+        }
+        
+        // Navigation functions
+        function showHome() {
+            updateActiveNav('الرئيسية');
+            loadRandomAyah();
+        }
+        
+        function showSurahs() {
+            updateActiveNav('السور');
+            renderSurahsList();
+        }
+        
+        function showSearch() {
+            updateActiveNav('البحث');
+            renderSearchPage();
+        }
+        
+        function updateActiveNav(activeItem) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.textContent.includes(activeItem)) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        
+        // Load random ayah for home page
+        async function loadRandomAyah() {
+            const randomAyah = Math.floor(Math.random() * 6236) + 1;
+            
+            const content = \`
+            <div class="container my-5">
+                <main class="container-fluid d-flex justify-content-center align-items-center mb-5">
+                    <div class="container ayah-container d-flex justify-content-center flex-column">
+                        <div class="text-center mb-4">
+                            <h1 style="color: #b8860b; font-family: 'Quranic'; margin-bottom: 20px;">آية اليوم</h1>
+                            <div id="ayahContent">
+                                <div class="loading text-center">
+                                    <i class="fas fa-spinner fa-spin fa-2x" style="color: #b8860b;"></i>
+                                    <p style="color: #b8860b; margin-top: 15px;">جاري تحميل الآية...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button class="btn btn-lg" onclick="loadRandomAyah()" style="background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%); color: #000000; border: none; padding: 15px 30px; border-radius: 25px; font-weight: bold; margin: 10px;">
+                                <i class="fas fa-refresh"></i> آية جديدة
+                            </button>
+                            <button class="btn btn-lg" onclick="showSurahs()" style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); color: #b8860b; border: 2px solid #b8860b; padding: 15px 30px; border-radius: 25px; font-weight: bold; margin: 10px;">
+                                <i class="fas fa-book"></i> تصفح السور
+                            </button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+            \`;
+            
+            document.getElementById('mainContent').innerHTML = content;
+            
+            try {
+                const response = await fetch(\`\${API_BASE}/ayah/\${randomAyah}/editions/quran-uthmani,en.asad,ar.muyassar,ar.alafasy\`);
+                const data = await response.json();
+                
+                const ayahText = data.data[0].text;
+                const surahName = data.data[0].surah.name;
+                const ayahNumber = data.data[0].numberInSurah;
+                const juz = data.data[0].juz;
+                const page = data.data[0].page;
+                const translation = data.data[1].text;
+                const tafsir = data.data[2].text;
+                const audio = data.data[3].audio;
+                
+                const ayahHTML = \`
+                    <div class="ayah-display text-center">
+                        <p class="fs-1 mb-4" style="font-family: 'Quranic'; color: #ffffff; line-height: 2.2; cursor: pointer;" onclick="playAyah('\${audio}', this)">
+                            \${ayahText}
+                        </p>
+                        <div class="ayah-info mb-4">
+                            <span class="badge" style="background: #b8860b; color: #000; font-size: 1rem; margin: 5px; padding: 8px 15px;">
+                                \${surahName}
+                            </span>
+                            <span class="badge" style="background: #2d2d2d; color: #b8860b; border: 1px solid #b8860b; font-size: 1rem; margin: 5px; padding: 8px 15px;">
+                                آية \${ayahNumber}
+                            </span>
+                            <span class="badge" style="background: #2d2d2d; color: #b8860b; border: 1px solid #b8860b; font-size: 1rem; margin: 5px; padding: 8px 15px;">
+                                جزء \${juz}
+                            </span>
+                            <span class="badge" style="background: #2d2d2d; color: #b8860b; border: 1px solid #b8860b; font-size: 1rem; margin: 5px; padding: 8px 15px;">
+                                صفحة \${page}
+                            </span>
+                        </div>
+                        <div class="translation mb-3">
+                            <h5 style="color: #b8860b;">English Translation:</h5>
+                            <p style="color: #ffffff; font-size: 1.1rem; font-style: italic;">"\${translation}"</p>
+                        </div>
+                        <div class="tafsir">
+                            <h5 style="color: #b8860b;">التفسير المیسر:</h5>
+                            <p style="color: #ffffff; font-size: 1rem; text-align: justify;">
+                                \${tafsir}
+                            </p>
+                        </div>
+                        <audio id="ayahAudio" style="display: none;"></audio>
+                    </div>
+                \`;
+                
+                document.getElementById('ayahContent').innerHTML = ayahHTML;
+            } catch (error) {
+                console.error('Error loading ayah:', error);
+                document.getElementById('ayahContent').innerHTML = \`
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        حدث خطأ في تحميل الآية. يرجى المحاولة مرة أخرى.
+                    </div>
+                \`;
+            }
+        }
+        
+        // Play ayah audio
+        function playAyah(audioUrl, element) {
+            if (currentAyahAudio) {
+                currentAyahAudio.pause();
+            }
+            
+            const audio = document.getElementById('ayahAudio');
+            audio.src = audioUrl;
+            currentAyahAudio = audio;
+            
+            // Visual feedback
+            document.querySelectorAll('.ayah-playing').forEach(el => el.classList.remove('ayah-playing'));
+            element.classList.add('ayah-playing');
+            
+            audio.play().catch(error => {
+                console.error('Error playing audio:', error);
+            });
+            
+            audio.onended = () => {
+                element.classList.remove('ayah-playing');
+            };
+        }
+        
+        // Render surahs list
+        function renderSurahsList() {
+            const content = \`
+            <div class="container my-5">
+                <div class="row justify-content-center">
+                    <div class="col-12">
+                        <h1 class="text-center mb-4" style="color: #ffd700; font-family: 'Quranic';">سور القرآن الكريم</h1>
+                        
+                        <!-- Search and Filter Controls -->
+                        <div class="search-filter-controls mb-4">
+                            <div class="row align-items-center">
+                                <div class="col-lg-6 col-md-8 col-sm-12 mb-3">
+                                    <div class="search-input-container">
+                                        <input type="text" id="surahSearch" class="surah-search-box" placeholder="ابحث عن السورة..." autocomplete="off">
+                                        <i class="fas fa-search search-icon"></i>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-md-4 col-sm-12 mb-3">
+                                    <div class="filter-buttons">
+                                        <button class="filter-btn active" data-filter="all">
+                                            <i class="fas fa-list"></i> جميع السور
+                                        </button>
+                                        <button class="filter-btn" data-filter="Meccan">
+                                            <i class="fas fa-kaaba"></i> مكية
+                                        </button>
+                                        <button class="filter-btn" data-filter="Medinan">
+                                            <i class="fas fa-mosque"></i> مدنية
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="search-results-info">
+                                <span id="resultsCount">عرض جميع السور (114)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="surah-grid" id="surahGrid">
+                            \${renderSurahCards()}
+                        </div>
+                        
+                        <!-- No Results Message -->
+                        <div id="noResults" class="no-results" style="display: none;">
+                            <div class="text-center">
+                                <i class="fas fa-search" style="font-size: 3rem; color: #b8860b; margin-bottom: 20px;"></i>
+                                <h3 style="color: #b8860b;">لم يتم العثور على نتائج</h3>
+                                <p style="color: #ffffff;">جرب البحث بكلمات مختلفة أو امسح مربع البحث لعرض جميع السور</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            \`;
+            
+            document.getElementById('mainContent').innerHTML = content;
+            initializeSurahSearch();
+        }
+        
+        // Render surah cards
+        function renderSurahCards() {
+            return allSurahs.map(surah => \`
+                <div class="surah-card" onclick="loadSurah(\${surah.number})" 
+                     data-name="\${surah.name}" 
+                     data-english="\${surah.englishName}" 
+                     data-type="\${surah.revelationType}">
+                    <div class="surah-number">\${surah.number}</div>
+                    <div class="surah-name">\${surah.name}</div>
+                    <div class="surah-info">
+                        <span class="surah-type">
+                            \${surah.revelationType === 'Meccan' ? 'مكية' : 'مدنية'}
+                        </span>
+                        <span class="surah-verses">\${surah.numberOfAyahs} آية</span>
+                    </div>
+                    <div class="surah-info">
+                        <span style="color: #ffffff; font-size: 0.9rem;">
+                            \${surah.englishName}
+                        </span>
+                    </div>
+                </div>
+            \`).join('');
+        }
+        
+        // Initialize surah search functionality
+        function initializeSurahSearch() {
+            const searchInput = document.getElementById('surahSearch');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const resultsCount = document.getElementById('resultsCount');
+            const noResults = document.getElementById('noResults');
+            const surahGrid = document.getElementById('surahGrid');
+            const allSurahCards = Array.from(document.querySelectorAll('.surah-card'));
+            
+            let currentFilter = 'all';
+            let currentSearch = '';
+            
+            // Arabic normalization function
+            function normalizeArabic(text) {
+                return text.replace(/[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED\\u06EF-\\u06FF]/g, '');
+            }
+            
+            // Search functionality
+            searchInput.addEventListener('input', function() {
+                currentSearch = normalizeArabic(this.value.trim().toLowerCase());
+                filterAndSearch();
+            });
+            
+            // Filter functionality
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.getAttribute('data-filter');
+                    filterAndSearch();
+                });
+            });
+            
+            function filterAndSearch() {
+                let visibleCount = 0;
+                let filteredSurahs = allSurahCards;
+                
+                // Apply filter
+                if (currentFilter !== 'all') {
+                    filteredSurahs = allSurahCards.filter(surah => 
+                        surah.getAttribute('data-type') === currentFilter
+                    );
+                }
+                
+                // Apply search
+                if (currentSearch) {
+                    filteredSurahs = filteredSurahs.filter(surah => {
+                        const arabicName = normalizeArabic(surah.getAttribute('data-name').toLowerCase());
+                        const englishName = surah.getAttribute('data-english').toLowerCase();
+                        return arabicName.includes(currentSearch) || englishName.includes(currentSearch);
+                    });
+                }
+                
+                // Show/hide surahs
+                allSurahCards.forEach(surah => {
+                    if (filteredSurahs.includes(surah)) {
+                        surah.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        surah.style.display = 'none';
+                    }
+                });
+                
+                // Update results count
+                updateResultsCount(visibleCount);
+                
+                // Show/hide no results message
+                if (visibleCount === 0) {
+                    noResults.style.display = 'block';
+                    surahGrid.style.display = 'none';
+                } else {
+                    noResults.style.display = 'none';
+                    surahGrid.style.display = 'grid';
+                }
+            }
+            
+            function updateResultsCount(count) {
+                let message = '';
+                
+                if (currentFilter === 'all' && !currentSearch) {
+                    message = 'عرض جميع السور (114)';
+                } else if (currentFilter !== 'all' && !currentSearch) {
+                    const filterName = currentFilter === 'Meccan' ? 'المكية' : 'المدنية';
+                    message = \`عرض السور \${filterName} (\${count})\`;
+                } else if (currentSearch && currentFilter === 'all') {
+                    message = \`نتائج البحث: \${count} سورة\`;
+                } else {
+                    const filterName = currentFilter === 'Meccan' ? 'المكية' : 'المدنية';
+                    message = \`نتائج البحث في السور \${filterName}: \${count} سورة\`;
+                }
+                
+                resultsCount.textContent = message;
+            }
+        }
+        
+        // Load individual surah
+        async function loadSurah(surahNumber) {
+            updateActiveNav('');
+            
+            const content = \`
+            <div class="container my-5">
+                <main class="container-fluid d-flex justify-content-center align-items-center mb-5">
+                    <div class="container ayah-container d-flex justify-content-center flex-column">
+                        <div class="loading text-center">
+                            <i class="fas fa-spinner fa-spin fa-2x" style="color: #b8860b;"></i>
+                            <p style="color: #b8860b; margin-top: 15px;">جاري تحميل السورة...</p>
+                        </div>
+                    </div>
+                </main>
+            </div>
+            \`;
+            
+            document.getElementById('mainContent').innerHTML = content;
+            
+            try {
+                const response = await fetch(\`\${API_BASE}/surah/\${surahNumber}/editions/quran-uthmani,ar.muyassar,ar.alafasy\`);
+                const data = await response.json();
+                
+                const surahData = data.data[0];
+                const tafsirData = data.data[1];
+                const audioData = data.data[2];
+                
+                renderSurahContent(surahData, tafsirData, audioData);
+            } catch (error) {
+                console.error('Error loading surah:', error);
+                document.getElementById('mainContent').innerHTML = \`
+                    <div class="container my-5">
+                        <div class="alert alert-danger text-center">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            حدث خطأ في تحميل السورة. يرجى المحاولة مرة أخرى.
+                            <br><br>
+                            <button class="btn btn-primary" onclick="showSurahs()">العودة إلى قائمة السور</button>
+                        </div>
+                    </div>
+                \`;
+            }
+        }
+        
+        // Render surah content
+        function renderSurahContent(surahData, tafsirData, audioData) {
+            const content = \`
+            <div class="container my-5">
+                <main class="container-fluid d-flex justify-content-center align-items-center mb-5">
+                    <div class="container ayah-container d-flex justify-content-center flex-column">
+                        <div class="text-center mb-4">
+                            <button class="btn btn-outline-warning mb-3" onclick="showSurahs()">
+                                <i class="fas fa-arrow-right"></i> العودة إلى قائمة السور
+                            </button>
+                        </div>
+                        
+                        <div class="top-container d-flex justify-content-between align-items-center mb-4">
+                            <p class="fs-3">القارئ الشيخ: مشاري راشد العفاسي</p>
+                            <div class="btns d-flex">
+                                <i id="pause" class="fa-solid fa-pause" onclick="pauseAudio()"></i>
+                                <i id="player" class="fa-solid fa-play" onclick="playAudio()"></i>
+                            </div>
+                        </div>
+                        
+                        <audio id="surahAudio" class="d-none" controls></audio>
+                        
+                        <p class="fs-1 text-center ayat mb-4" onclick="playBasmala()" id="ayah-0">
+                            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                        </p>
+                        
+                        <div class="ayah-content fs-1" style="line-height: 2.5;">
+                            \${renderAyahs(surahData.ayahs, audioData.ayahs)}
+                        </div>
+                        
+                        <div class="ayah-prop fs-4 text-center mt-4">
+                            <span>\${surahData.name}</span> 
+                            <span>الجزء \${surahData.ayahs[0].juz}</span>
+                            <span>سورة رقم \${surahData.number}</span>
+                            <span>عدد آياتها \${surahData.numberOfAyahs}</span>
+                        </div>
+                        
+                        <span class="tafseer-btn btn mt-3 py-2" onclick="toggleTafsir()">عرض التفسير</span>
+                        <div class="tafsir-container" id="tafsirContainer">
+                            \${renderTafsir(tafsirData.ayahs)}
+                            <span>التفسير المیسر</span>
+                        </div>
+                    </div>
+                </main>
+            </div>
+            \`;
+            
+            document.getElementById('mainContent').innerHTML = content;
+            initializeSurahAudio(audioData.ayahs);
+        }
+        
+        // Render ayahs
+        function renderAyahs(ayahs, audioAyahs) {
+            return ayahs.map((ayah, index) => {
+                const ayahText = index === 0 ? ayah.text.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', '') : ayah.text;
+                const audioUrl = audioAyahs[index]?.audio || '';
+                
+                return \`
+                    <span class="ayat" onclick="playAyahInSurah('\${audioUrl}', this)" id="ayah-\${ayah.numberInSurah}">
+                        \${ayahText}
+                    </span>
+                    <span class="fs-4" style="color: #b8860b; margin: 0 10px;"> (\${ayah.numberInSurah}) </span>
+                \`;
+            }).join('');
+        }
+        
+        // Render tafsir
+        function renderTafsir(tafsirAyahs) {
+            return tafsirAyahs.map((ayah, index) => 
+                \`<p class="">\${ayah.text} (\${index + 1})</p>\`
+            ).join('');
+        }
+        
+        // Initialize surah audio functionality
+        function initializeSurahAudio(audioAyahs) {
+            window.currentAudioArray = audioAyahs.map(ayah => ayah.audio);
+            window.currentAudioIndex = 0;
+            
+            const audio = document.getElementById('surahAudio');
+            audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+            
+            audio.onended = function() {
+                const currentAyah = document.getElementById(\`ayah-\${window.currentAudioIndex}\`);
+                if (currentAyah) currentAyah.classList.remove('active');
+                
+                if (window.currentAudioIndex < window.currentAudioArray.length) {
+                    if (window.currentAudioArray[window.currentAudioIndex] !== "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3") {
+                        window.currentAudioIndex++;
+                    }
+                    if (window.currentAudioIndex < window.currentAudioArray.length) {
+                        audio.src = window.currentAudioArray[window.currentAudioIndex];
+                        audio.play();
+                        window.currentAudioIndex++;
+                        
+                        const nextAyah = document.getElementById(\`ayah-\${window.currentAudioIndex}\`);
+                        if (nextAyah) nextAyah.classList.add('active');
+                    }
+                }
+            };
+        }
+        
+        // Audio control functions
+        function playBasmala() {
+            const audio = document.getElementById('surahAudio');
+            audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+            audio.play();
+            
+            document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
+            document.getElementById('ayah-0').classList.add('active');
+        }
+        
+        function playAyahInSurah(audioUrl, element) {
+            const audio = document.getElementById('surahAudio');
+            audio.src = audioUrl;
+            audio.play();
+            
+            document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
+            element.classList.add('active');
+        }
+        
+        function playAudio() {
+            const audio = document.getElementById('surahAudio');
+            const playBtn = document.getElementById('player');
+            const pauseBtn = document.getElementById('pause');
+            
+            if (audio.currentTime === 0) {
+                audio.play();
+                document.getElementById('ayah-0').classList.add('active');
+                playBtn.classList.remove('fa-play');
+                playBtn.classList.add('fa-stop');
+            } else {
+                playBtn.classList.remove('fa-stop');
+                playBtn.classList.add('fa-play');
+                audio.pause();
+                audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+                window.currentAudioIndex = 0;
+                audio.currentTime = 0;
+                document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
+            }
+        }
+        
+        function pauseAudio() {
+            const audio = document.getElementById('surahAudio');
+            const pauseBtn = document.getElementById('pause');
+            
+            if (audio.currentTime === 0) return;
+            
+            if (audio.paused) {
+                audio.play();
+                pauseBtn.classList.remove('fa-play');
+                pauseBtn.classList.add('fa-pause');
+            } else {
+                audio.pause();
+                pauseBtn.classList.remove('fa-pause');
+                pauseBtn.classList.add('fa-play');
+            }
+        }
+        
+        function toggleTafsir() {
+            document.getElementById('tafsirContainer').classList.toggle('active');
+        }
+        
+        // Search page functionality
+        function renderSearchPage() {
+            const content = \`
+            <div class="container my-5">
+                <div class="search-container">
+                    <h1 class="text-center mb-4" style="color: #ffd700; font-family: 'Quranic';">البحث في القرآن الكريم</h1>
+                    
+                    <div class="search-input-container mb-4">
+                        <input type="text" id="quranSearch" class="search-box" 
+                               placeholder="ابحث في القرآن الكريم..." autocomplete="off">
+                        <button class="btn btn-primary" onclick="searchQuran()" 
+                                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #b8860b; border: none;">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="text-center mb-4">
+                        <small style="color: #b8860b;">
+                            <i class="fas fa-info-circle"></i>
+                            يمكنك البحث بالكلمات العربية أو الإنجليزية - لا حاجة للتشكيل
+                        </small>
+                    </div>
+                    
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+            </div>
+            \`;
+            
+            document.getElementById('mainContent').innerHTML = content;
+            
+            // Add enter key functionality
+            document.getElementById('quranSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchQuran();
+                }
+            });
+        }
+        
+        // Search in Quran
+        async function searchQuran() {
+            const searchTerm = document.getElementById('quranSearch').value.trim();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (!searchTerm) {
+                resultsDiv.innerHTML = \`
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        يرجى إدخال كلمة للبحث
+                    </div>
+                \`;
+                return;
+            }
+            
+            resultsDiv.innerHTML = \`
+                <div class="loading text-center">
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color: #b8860b;"></i>
+                    <p style="color: #b8860b; margin-top: 15px;">جاري البحث في القرآن الكريم...</p>
+                </div>
+            \`;
+            
+            try {
+                // Normalize search term
+                const normalizeArabic = (text) => {
+                    return text.replace(/[\\u064B-\\u065F\\u0670\\u06D6-\\u06ED\\u06EF-\\u06FF]/g, '');
+                };
+                
+                const normalizedSearch = normalizeArabic(searchTerm.toLowerCase());
+                let allResults = [];
+                
+                // Search through first 10 surahs for demo (to avoid rate limiting)
+                const searchPromises = [];
+                for (let i = 1; i <= 10; i++) {
+                    const promise = fetch(\`\${API_BASE}/surah/\${i}/ar.muyassar\`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const surahData = data.data;
+                            const surahResults = [];
+                            surahData.ayahs.forEach(ayah => {
+                                const normalizedAyah = normalizeArabic(ayah.text.toLowerCase());
+                                if (normalizedAyah.includes(normalizedSearch)) {
+                                    surahResults.push({
+                                        text: ayah.text,
+                                        surahName: surahData.name,
+                                        surahNumber: surahData.number,
+                                        ayahNumber: ayah.numberInSurah,
+                                        juz: ayah.juz,
+                                        page: ayah.page
+                                    });
+                                }
+                            });
+                            return surahResults;
+                        })
+                        .catch(() => []);
+                    
+                    searchPromises.push(promise);
+                }
+                
+                const results = await Promise.all(searchPromises);
+                allResults = results.flat();
+                
+                if (allResults.length === 0) {
+                    resultsDiv.innerHTML = \`
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-search"></i>
+                            لم يتم العثور على نتائج لـ "\${searchTerm}"
+                            <br><small>جرب كلمات مختلفة أو تأكد من الإملاء</small>
+                        </div>
+                    \`;
+                } else {
+                    const resultsHTML = allResults.slice(0, 20).map(result => \`
+                        <div class="search-result-item">
+                            <div class="search-result-text">\${result.text}</div>
+                            <div class="search-result-info">
+                                <span><i class="fas fa-book"></i> \${result.surahName}</span>
+                                <span><i class="fas fa-verse"></i> آية \${result.ayahNumber}</span>
+                                <span><i class="fas fa-bookmark"></i> جزء \${result.juz}</span>
+                                <span><i class="fas fa-file"></i> صفحة \${result.page}</span>
+                            </div>
+                        </div>
+                    \`).join('');
+                    
+                    resultsDiv.innerHTML = \`
+                        <div class="mb-3 text-center" style="color: #b8860b;">
+                            <i class="fas fa-check-circle"></i>
+                            تم العثور على \${allResults.length} نتيجة (عرض أول 20)
+                        </div>
+                        \${resultsHTML}
+                    \`;
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsDiv.innerHTML = \`
+                    <div class="alert alert-danger text-center">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        حدث خطأ أثناء البحث. يرجى المحاولة مرة أخرى.
+                    </div>
+                \`;
+            }
+        }
+    </script>
+    
+    <!-- Custom styles for better UX -->
+    <style>
+        .ayah-playing {
+            background-color: #b8860b !important;
+            color: #000000 !important;
+        }
+        
+        .search-input-container {
+            position: relative;
+        }
+        
+        .loading {
+            padding: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .ayah-container {
+                width: 100% !important;
+                padding: 15px !important;
+            }
+            
+            .fs-1 {
+                font-size: 1.5rem !important;
+            }
+            
+            .surah-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
 </body>
-</html>
-`;
+</html>`;
+};
 
-fs.writeFileSync('docs/index.html', indexHTML);
-console.log('Created index.html for GitHub Pages');
-console.log('\\nBuild complete! Upload the docs folder to GitHub Pages.');
-console.log('Your site will be available at: https://yassin287.github.io/quraan');
+// Write the full HTML file
+fs.writeFileSync('docs/index.html', createFullHTML());
+console.log('✅ Created complete index.html for GitHub Pages');
+
+console.log('\n🎉 Build complete!');
+console.log('📁 All files are ready in the docs/ folder');
+console.log('🌐 Your full Quran Platform will be available at: https://yassin287.github.io/quraan');
+console.log('\n📋 Next steps:');
+console.log('1. Push to GitHub: git add . && git commit -m "Complete Quran Platform" && git push');
+console.log('2. Enable GitHub Pages from docs/ folder in repository settings');
+console.log('3. Wait 5-10 minutes for deployment');
