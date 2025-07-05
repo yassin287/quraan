@@ -156,14 +156,14 @@ class PrayerTimes {
 
 	displayCurrentDate() {
 		const today = new Date();
-		const gregorianDate = today.toLocaleDateString('ar-SA', {
+		const gregorianDate = today.toLocaleDateString('ar-EG', {
 			year: 'numeric',
 			month: 'long',
 			day: 'numeric',
 			weekday: 'long'
 		});
 		
-		// Get Hijri date (simplified)
+		// Get Hijri date using improved calculation
 		const hijriDate = this.getHijriDate(today);
 		
 		document.getElementById('gregorian-date').textContent = gregorianDate;
@@ -171,15 +171,38 @@ class PrayerTimes {
 	}
 
 	getHijriDate(date) {
-		// Simplified Hijri date calculation
-		// In a real app, you'd use a proper Hijri calendar library
-		const hijriYear = Math.floor((date.getFullYear() - 622) * 1.030684);
-		const months = [
+		// Improved Hijri date calculation
+		// Islamic calendar epoch: July 16, 622 CE (1 Muharram 1 AH)
+		const islamicEpoch = new Date(622, 6, 16);
+		const diffTime = date.getTime() - islamicEpoch.getTime();
+		const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+		
+		// More accurate Islamic year calculation (354.367 days per year)
+		const daysPerYear = 354.367;
+		const hijriYear = Math.floor(diffDays / daysPerYear) + 1;
+		const dayOfYear = Math.floor(diffDays % daysPerYear);
+		
+		const hijriMonths = [
 			'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
 			'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
 		];
-		const month = months[date.getMonth()];
-		return `${date.getDate()} ${month} ${hijriYear + 622}`;
+		
+		// Calculate month and day (alternating 30/29 days per month)
+		let remainingDays = dayOfYear;
+		let monthIndex = 0;
+		const monthLengths = [30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29]; // Basic pattern
+		
+		for (let i = 0; i < 12; i++) {
+			if (remainingDays < monthLengths[i]) {
+				monthIndex = i;
+				break;
+			}
+			remainingDays -= monthLengths[i];
+		}
+		
+		const dayOfMonth = remainingDays + 1;
+		
+		return `${Math.floor(dayOfMonth)} ${hijriMonths[monthIndex]} ${hijriYear}`;
 	}
 
 	getUserLocation() {
