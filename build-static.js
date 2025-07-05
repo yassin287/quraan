@@ -915,18 +915,17 @@ const createFullHTML = () => {
             const content = \`
             <div class="container my-5">
                 <div class="text-center mb-4">
-                    <h1 style="color: #b8860b; font-family: 'Quranic';">أوقات الصلاة</h1>
-                    <p style="color: #ffffff;">اعرف أوقات الصلاة الخمس في موقعك</p>
+                    <h1 class="prayer-title">أوقات الصلاة</h1>
+                    <p class="prayer-subtitle">اعرف أوقات الصلوات الخمس حسب موقعك</p>
                 </div>
 
                 <div class="row justify-content-center">
                     <div class="col-md-10">
-                        <div class="prayer-times-card">
-                            
-                            <div class="location-header">
-                                <div class="location-info">
+                        <div class="prayer-times-container">
+                            <div class="prayer-header">
+                                <div id="location-info" class="mb-4">
                                     <h5 class="location-title">
-                                        <i class="fas fa-map-marker-alt"></i>
+                                        <i class="fas fa-globe-americas me-2"></i>
                                         الموقع الحالي
                                     </h5>
                                     <p id="coordinates" class="location-text">جاري تحديد الموقع...</p>
@@ -953,41 +952,50 @@ const createFullHTML = () => {
 
                             <div id="prayer-times-container" class="d-none">
                                 <div class="row" id="prayer-times"></div>
+                            </div>
+
+                            <div class="location-controls mt-4 text-center">
+                                <button id="get-location-btn" class="custom-btn me-3 mb-2">
+                                    <i class="fas fa-map-marker-alt"></i> تحديث الموقع
+                                </button>
+                                <button id="manual-location-btn" class="custom-btn secondary mb-2">
+                                    <i class="fas fa-edit"></i> إدخال الموقع يدوياً
+                                </button>
                                 
-                                <div class="text-center mt-4">
-                                    <div class="action-buttons">
-                                        <button onclick="prayerTimesHandler.getUserLocation()" class="btn-primary">
-                                            <i class="fas fa-sync-alt"></i> تحديث الأوقات
-                                        </button>
-                                        <button onclick="prayerTimesHandler.showManualLocationForm()" class="btn-secondary">
-                                            <i class="fas fa-edit"></i> إدخال الموقع يدوياً
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Manual Location Form -->
-                                <div id="manual-location-form" class="manual-form">
-                                    <h6><i class="fas fa-map-marker-alt"></i> إدخال الموقع يدوياً</h6>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="manual-city">اسم المدينة:</label>
-                                            <input type="text" id="manual-city" placeholder="مثال: القاهرة، الرياض، دبي">
+                                <div id="manual-location-form" class="manual-location-form mt-3 d-none">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <input type="text" id="city-input" class="form-control location-input" placeholder="اسم المدينة (مثل: القاهرة)">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <input type="text" id="country-input" class="form-control location-input" placeholder="اسم البلد (مثل: مصر)">
                                         </div>
                                     </div>
-                                    <div class="form-buttons">
-                                        <button onclick="prayerTimesHandler.loadPrayerTimesByCity()" class="btn-primary">
-                                            <i class="fas fa-search"></i> البحث عن الأوقات
-                                        </button>
-                                        <button onclick="prayerTimesHandler.hideManualLocationForm()" class="btn-secondary">
-                                            <i class="fas fa-times"></i> إلغاء
-                                        </button>
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <button id="search-location-btn" class="custom-btn">
+                                                <i class="fas fa-search"></i> البحث عن الموقع
+                                            </button>
+                                            <button id="cancel-manual-btn" class="custom-btn secondary ms-2">
+                                                <i class="fas fa-times"></i> إلغاء
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div id="prayer-error" class="error-message d-none">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <span id="error-text"></span>
+
+                            <div class="prayer-info mt-4">
+                                <div class="info-card">
+                                    <h6 class="info-title">
+                                        <i class="fas fa-info-circle"></i>
+                                        معلومات مهمة
+                                    </h6>
+                                    <ul class="info-list">
+                                        <li>الأوقات محسوبة حسب موقعك الجغرافي</li>
+                                        <li>يُنصح بالتأكد من الأوقات مع المسجد المحلي</li>
+                                        <li>تأكد من تمكين الموقع في المتصفح</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1004,10 +1012,65 @@ const createFullHTML = () => {
             window.compass = new QiblaCompass();
         }
         
-        // Prayer Times Handler
-        const prayerTimesHandler = {
-            userLocation: null,
-            
+        // Prayer Times Handler - Class-based implementation
+        class PrayerTimes {
+            constructor() {
+                this.userLocation = null;
+                this.init();
+            }
+
+            init() {
+                this.displayCurrentDate();
+                this.getUserLocation();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('get-location-btn').addEventListener('click', () => {
+                    this.getUserLocation();
+                });
+                
+                document.getElementById('manual-location-btn').addEventListener('click', () => {
+                    this.toggleManualLocationForm();
+                });
+                
+                document.getElementById('search-location-btn').addEventListener('click', () => {
+                    this.searchManualLocation();
+                });
+                
+                document.getElementById('cancel-manual-btn').addEventListener('click', () => {
+                    this.hideManualLocationForm();
+                });
+            }
+
+            displayCurrentDate() {
+                const today = new Date();
+                const gregorianDate = today.toLocaleDateString('ar-SA', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                
+                // Get Hijri date (simplified)
+                const hijriDate = this.getHijriDate(today);
+                
+                document.getElementById('gregorian-date').textContent = gregorianDate;
+                document.getElementById('hijri-date').textContent = hijriDate;
+            }
+
+            getHijriDate(date) {
+                // Simplified Hijri date calculation
+                // In a real app, you'd use a proper Hijri calendar library
+                const hijriYear = Math.floor((date.getFullYear() - 622) * 1.030684);
+                const months = [
+                    'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
+                    'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
+                ];
+                const month = months[date.getMonth()];
+                return \`\${date.getDate()} \${month} \${hijriYear + 622}\`;
+            }
+
             getUserLocation() {
                 if (!navigator.geolocation) {
                     this.showError('الجهاز لا يدعم تحديد الموقع');
@@ -1032,185 +1095,180 @@ const createFullHTML = () => {
                         this.loadPrayerTimes();
                     },
                     (error) => {
-                        console.error('Geolocation error:', error);
-                        this.showError('فشل في تحديد الموقع تلقائياً. يرجى إدخال المدينة يدوياً.');
-                        this.showManualLocationForm();
+                        let errorMessage = 'فشل في تحديد الموقع';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = 'تم رفض الإذن لتحديد الموقع';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = 'الموقع غير متاح';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = 'انتهت مهلة تحديد الموقع';
+                                break;
+                        }
+                        this.showError(errorMessage);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 300000
                     }
                 );
-            },
+            }
 
-            async updateLocationDisplay() {
+            updateLocationDisplay() {
+                const coords = document.getElementById('coordinates');
+                coords.innerHTML = \`
+                    <i class="fas fa-map-marker-alt"></i>
+                    جاري تحديد اسم المنطقة...
+                \`;
+                
+                // Get location name using reverse geocoding
+                this.getLocationName();
+            }
+
+            async getLocationName() {
                 if (!this.userLocation) return;
-
+                
                 try {
-                    // Try Nominatim first
-                    const nominatimUrl = \`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${this.userLocation.lat}&lon=\${this.userLocation.lng}&accept-language=ar\`;
-                    const nominatimResponse = await fetch(nominatimUrl);
-                    const nominatimData = await nominatimResponse.json();
-
-                    if (nominatimData && nominatimData.address) {
-                        const address = nominatimData.address;
+                    // Try multiple geocoding services for better results
+                    let locationData = null;
+                    
+                    // First try: OpenStreetMap Nominatim with Arabic language preference
+                    try {
+                        const nominatimResponse = await fetch(
+                            \`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${this.userLocation.lat}&lon=\${this.userLocation.lng}&accept-language=ar,en&addressdetails=1&zoom=18\`
+                        );
+                        
+                        if (nominatimResponse.ok) {
+                            locationData = await nominatimResponse.json();
+                        }
+                    } catch (e) {
+                        console.log('Nominatim failed, trying alternative...');
+                    }
+                    
+                    // Second try: BigDataCloud (backup service)
+                    if (!locationData || !locationData.address) {
+                        try {
+                            const bigDataResponse = await fetch(
+                                \`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=\${this.userLocation.lat}&longitude=\${this.userLocation.lng}&localityLanguage=ar\`
+                            );
+                            
+                            if (bigDataResponse.ok) {
+                                const bigDataResult = await bigDataResponse.json();
+                                // Convert BigDataCloud format to Nominatim-like format
+                                locationData = {
+                                    address: {
+                                        city: bigDataResult.city,
+                                        state: bigDataResult.principalSubdivision,
+                                        country: bigDataResult.countryName,
+                                        suburb: bigDataResult.locality
+                                    }
+                                };
+                            }
+                        } catch (e) {
+                            console.log('BigDataCloud also failed');
+                        }
+                    }
+                    
+                    const coords = document.getElementById('coordinates');
+                    
+                    if (locationData && locationData.address) {
+                        // Extract area and city information with improved logic
+                        const address = locationData.address;
+                        const city = address.city || address.town || address.village || address.municipality || '';
+                        const state = address.state || address.governorate || address.province || address.region || '';
+                        const suburb = address.suburb || address.neighbourhood || address.quarter || address.district || '';
+                        const country = address.country || '';
+                        
+                        // Create a formatted location string similar to "حدايق الاهرام / الجيزة"
                         let locationText = '';
                         
-                        if (address.neighbourhood || address.suburb || address.district) {
-                            locationText += (address.neighbourhood || address.suburb || address.district) + ' / ';
+                        if (suburb && city && suburb !== city) {
+                            locationText = \`\${suburb} / \${city}\`;
+                        } else if (city) {
+                            locationText = city;
+                        } else if (suburb) {
+                            locationText = suburb;
+                        } else if (state) {
+                            locationText = state;
+                        } else if (country) {
+                            locationText = country;
+                        } else {
+                            locationText = 'منطقة غير محددة';
                         }
-                        if (address.city || address.town || address.village) {
-                            locationText += (address.city || address.town || address.village);
-                        } else if (address.county) {
-                            locationText += address.county;
-                        } else if (address.state) {
-                            locationText += address.state;
+                        
+                        // Add state/governorate if it's different from city and we have space
+                        if (state && city && state !== city && !locationText.includes(state)) {
+                            locationText += \` - \${state}\`;
                         }
-
-                        if (locationText) {
-                            document.getElementById('coordinates').innerHTML = \`
-                                <i class="fas fa-map-marker-alt location-icon"></i>
-                                <span class="location-name">\${locationText}</span>
-                            \`;
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Nominatim failed, trying BigDataCloud:', error);
-                }
-
-                try {
-                    // Fallback to BigDataCloud
-                    const bigDataUrl = \`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=\${this.userLocation.lat}&longitude=\${this.userLocation.lng}&localityLanguage=ar\`;
-                    const bigDataResponse = await fetch(bigDataUrl);
-                    const bigDataData = await bigDataResponse.json();
-
-                    if (bigDataData) {
-                        let locationText = '';
-                        if (bigDataData.locality) {
-                            locationText += bigDataData.locality + ' / ';
-                        }
-                        if (bigDataData.city) {
-                            locationText += bigDataData.city;
-                        } else if (bigDataData.principalSubdivision) {
-                            locationText += bigDataData.principalSubdivision;
-                        }
-
-                        if (locationText) {
-                            document.getElementById('coordinates').innerHTML = \`
-                                <i class="fas fa-map-marker-alt location-icon"></i>
-                                <span class="location-name">\${locationText}</span>
-                            \`;
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    console.warn('BigDataCloud also failed:', error);
-                }
-
-                // Fallback to coordinates
-                document.getElementById('coordinates').innerHTML = \`
-                    <i class="fas fa-map-marker-alt location-icon"></i>
-                    <span class="location-coords">\${this.userLocation.lat.toFixed(4)}°, \${this.userLocation.lng.toFixed(4)}°</span>
-                \`;
-            },
-
-            async loadPrayerTimes() {
-                if (!this.userLocation) {
-                    this.showError('لم يتم تحديد الموقع بعد');
-                    return;
-                }
-
-                try {
-                    const today = new Date();
-                    const response = await fetch(\`https://api.aladhan.com/v1/timings/\${today.getDate()}-\${today.getMonth() + 1}-\${today.getFullYear()}?latitude=\${this.userLocation.lat}&longitude=\${this.userLocation.lng}&method=4\`);
-                    const data = await response.json();
-                    
-                    if (data.code === 200) {
-                        this.displayPrayerTimes(data.data.timings);
-                    } else {
-                        throw new Error('API returned error');
-                    }
-                } catch (error) {
-                    console.error('Prayer times error:', error);
-                    this.showError('فشل في تحميل أوقات الصلاة. يرجى المحاولة مرة أخرى.');
-                }
-            },
-
-            async loadPrayerTimesByCity() {
-                const cityName = document.getElementById('manual-city').value.trim();
-                if (!cityName) {
-                    this.showError('يرجى إدخال اسم المدينة');
-                    return;
-                }
-
-                try {
-                    // Show loading
-                    document.getElementById('coordinates').innerHTML = \`
-                        <div class="location-loading">
-                            <div class="mini-spinner"></div>
-                            جاري البحث عن \${cityName}...
-                        </div>
-                    \`;
-
-                    const today = new Date();
-                    const response = await fetch(\`https://api.aladhan.com/v1/timingsByCity/\${today.getDate()}-\${today.getMonth() + 1}-\${today.getFullYear()}?city=\${encodeURIComponent(cityName)}&method=4\`);
-                    const data = await response.json();
-                    
-                    if (data.code === 200) {
-                        // Update location display with city name
-                        document.getElementById('coordinates').innerHTML = \`
-                            <i class="fas fa-map-marker-alt location-icon"></i>
-                            <span class="location-name">\${cityName}</span>
+                        
+                        coords.innerHTML = \`
+                            <i class="fas fa-map-marker-alt"></i>
+                            \${locationText}
                         \`;
                         
-                        this.displayPrayerTimes(data.data.timings);
-                        this.hideManualLocationForm();
                     } else {
-                        throw new Error('City not found');
+                        throw new Error('No address data available');
                     }
+                    
                 } catch (error) {
-                    console.error('City search error:', error);
-                    this.showError('لم يتم العثور على المدينة. تأكد من اسم المدينة وحاول مرة أخرى.');
+                    console.error('Error getting location name:', error);
+                    const coords = document.getElementById('coordinates');
+                    coords.innerHTML = \`
+                        <i class="fas fa-map-marker-alt"></i>
+                        \${this.userLocation.lat.toFixed(4)}°, \${this.userLocation.lng.toFixed(4)}°
+                    \`;
                 }
-            },
+            }
+
+            loadPrayerTimes() {
+                if (!this.userLocation) return;
+
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = today.getMonth() + 1;
+                const day = today.getDate();
+
+                fetch(\`https://api.aladhan.com/v1/timings/\${day}-\${month}-\${year}?latitude=\${this.userLocation.lat}&longitude=\${this.userLocation.lng}&method=4\`)
+                    .then(response => response.json())
+                    .then(data => {
+                        this.displayPrayerTimes(data.data.timings);
+                    })
+                    .catch(error => {
+                        console.error('Error loading prayer times:', error);
+                        document.getElementById('prayer-times-loading').innerHTML = 
+                            '<p class="error-text">فشل في تحميل أوقات الصلاة</p>';
+                    });
+            }
 
             displayPrayerTimes(timings) {
-                const prayerNames = {
-                    'Fajr': { ar: 'الفجر', icon: 'fa-sun' },
-                    'Dhuhr': { ar: 'الظهر', icon: 'fa-sun' }, 
-                    'Asr': { ar: 'العصر', icon: 'fa-sun' },
-                    'Maghrib': { ar: 'المغرب', icon: 'fa-moon' },
-                    'Isha': { ar: 'العشاء', icon: 'fa-moon' }
-                };
+                const prayers = [
+                    { key: 'Fajr', name: 'الفجر', icon: 'fas fa-sun' },
+                    { key: 'Dhuhr', name: 'الظهر', icon: 'fas fa-sun' },
+                    { key: 'Asr', name: 'العصر', icon: 'fas fa-cloud-sun' },
+                    { key: 'Maghrib', name: 'المغرب', icon: 'fas fa-moon' },
+                    { key: 'Isha', name: 'العشاء', icon: 'fas fa-moon' }
+                ];
 
-                const now = new Date();
-                const currentTime = now.getHours() * 60 + now.getMinutes();
-                let nextPrayer = null;
-                let minDiff = Infinity;
+                const currentTime = new Date();
+                const currentTimeString = currentTime.toTimeString().slice(0, 5);
 
                 let html = '';
-                Object.keys(prayerNames).forEach(prayer => {
-                    const time = timings[prayer];
-                    const [hours, minutes] = time.split(':').map(Number);
-                    const prayerTime = hours * 60 + minutes;
+                prayers.forEach(prayer => {
+                    const isNext = this.isNextPrayer(currentTimeString, timings[prayer.key]);
+                    const timeLeft = this.calculateTimeLeft(currentTimeString, timings[prayer.key]);
                     
-                    let timeDiff = prayerTime - currentTime;
-                    if (timeDiff < 0) timeDiff += 24 * 60; // Next day
-                    
-                    if (timeDiff < minDiff) {
-                        minDiff = timeDiff;
-                        nextPrayer = prayer;
-                    }
-
-                    const isNext = prayer === nextPrayer;
-                    const cardClass = isNext ? 'prayer-card next-prayer' : 'prayer-card';
-
                     html += \`
-                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-                            <div class="\${cardClass}">
+                        <div class="col-md-4 col-lg-2 mb-4">
+                            <div class="prayer-card \${isNext ? 'next-prayer' : ''}">
                                 <div class="prayer-icon">
-                                    <i class="fas \${prayerNames[prayer].icon}"></i>
+                                    <i class="\${prayer.icon}"></i>
                                 </div>
-                                <h5 class="prayer-name">\${prayerNames[prayer].ar}</h5>
-                                <div class="prayer-time">\${time}</div>
-                                \${isNext ? '<div class="next-indicator">القادمة</div>' : ''}
+                                <h6 class="prayer-name">\${prayer.name}</h6>
+                                <div class="prayer-time">\${timings[prayer.key]}</div>
+                                \${isNext ? \`<div class="time-remaining">\${timeLeft}</div>\` : ''}
                             </div>
                         </div>
                     \`;
@@ -1219,83 +1277,117 @@ const createFullHTML = () => {
                 document.getElementById('prayer-times').innerHTML = html;
                 document.getElementById('prayer-times-loading').classList.add('d-none');
                 document.getElementById('prayer-times-container').classList.remove('d-none');
-                document.getElementById('prayer-error').classList.add('d-none');
-            },
+            }
 
-            showManualLocationForm() {
-                document.getElementById('manual-location-form').style.display = 'block';
-            },
+            isNextPrayer(currentTime, prayerTime) {
+                const current = this.timeToMinutes(currentTime);
+                const prayer = this.timeToMinutes(prayerTime);
+                return prayer > current;
+            }
 
-            hideManualLocationForm() {
-                document.getElementById('manual-location-form').style.display = 'none';
-                document.getElementById('manual-city').value = '';
-            },
+            calculateTimeLeft(currentTime, prayerTime) {
+                const current = this.timeToMinutes(currentTime);
+                const prayer = this.timeToMinutes(prayerTime);
+                
+                if (prayer <= current) return '';
+                
+                const diff = prayer - current;
+                const hours = Math.floor(diff / 60);
+                const minutes = diff % 60;
+                
+                if (hours > 0) {
+                    return \`\${hours}:\${minutes.toString().padStart(2, '0')} ساعة\`;
+                } else {
+                    return \`\${minutes} دقيقة\`;
+                }
+            }
+
+            timeToMinutes(timeString) {
+                const [hours, minutes] = timeString.split(':').map(Number);
+                return hours * 60 + minutes;
+            }
 
             showError(message) {
-                document.getElementById('error-text').textContent = message;
-                document.getElementById('prayer-error').classList.remove('d-none');
-                document.getElementById('prayer-times-loading').classList.add('d-none');
-            },
-
-            displayCurrentDate() {
-                const today = new Date();
+                document.getElementById('coordinates').innerHTML = 
+                    \`<i class="fas fa-exclamation-triangle"></i> \${message}\`;
+            }
+            
+            toggleManualLocationForm() {
+                const form = document.getElementById('manual-location-form');
+                form.classList.toggle('d-none');
                 
-                // Gregorian date in Arabic
-                const gregorianDate = today.toLocaleDateString('ar-EG', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    weekday: 'long'
-                });
+                if (!form.classList.contains('d-none')) {
+                    document.getElementById('city-input').focus();
+                }
+            }
+            
+            hideManualLocationForm() {
+                document.getElementById('manual-location-form').classList.add('d-none');
+                document.getElementById('city-input').value = '';
+                document.getElementById('country-input').value = '';
+            }
+            
+            async searchManualLocation() {
+                const city = document.getElementById('city-input').value.trim();
+                const country = document.getElementById('country-input').value.trim();
                 
-                // Get proper Hijri date using improved calculation
-                const hijriDate = this.getHijriDate(today);
-                
-                // Display both dates correctly
-                document.getElementById('gregorian-date').textContent = gregorianDate;
-                document.getElementById('hijri-date').textContent = hijriDate;
-            },
-
-            getHijriDate(date) {
-                // Improved Hijri date calculation
-                // Islamic calendar epoch: July 16, 622 CE (1 Muharram 1 AH)
-                const islamicEpoch = new Date(622, 6, 16);
-                const diffTime = date.getTime() - islamicEpoch.getTime();
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                
-                // More accurate Islamic year calculation (354.367 days per year)
-                const daysPerYear = 354.367;
-                const hijriYear = Math.floor(diffDays / daysPerYear) + 1;
-                const dayOfYear = Math.floor(diffDays % daysPerYear);
-                
-                const hijriMonths = [
-                    'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
-                    'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
-                ];
-                
-                // Calculate month and day (alternating 30/29 days per month)
-                let remainingDays = dayOfYear;
-                let monthIndex = 0;
-                const monthLengths = [30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29]; // Basic pattern
-                
-                for (let i = 0; i < 12; i++) {
-                    if (remainingDays < monthLengths[i]) {
-                        monthIndex = i;
-                        break;
-                    }
-                    remainingDays -= monthLengths[i];
+                if (!city) {
+                    alert('يرجى إدخال اسم المدينة');
+                    return;
                 }
                 
-                const dayOfMonth = remainingDays + 1;
+                const coords = document.getElementById('coordinates');
+                coords.innerHTML = \`
+                    <i class="fas fa-search"></i>
+                    جاري البحث عن \${city}...
+                \`;
                 
-                return \`\${Math.floor(dayOfMonth)} \${hijriMonths[monthIndex]} \${hijriYear}\`;
+                try {
+                    // Search for the location using Nominatim
+                    const query = country ? \`\${city}, \${country}\` : city;
+                    const response = await fetch(
+                        \`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query)}&limit=1&accept-language=ar,en\`
+                    );
+                    
+                    if (!response.ok) {
+                        throw new Error('فشل في البحث عن الموقع');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.length === 0) {
+                        throw new Error('لم يتم العثور على الموقع المطلوب');
+                    }
+                    
+                    // Set the location from search results
+                    this.userLocation = {
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon)
+                    };
+                    
+                    // Display the found location name
+                    coords.innerHTML = \`
+                        <i class="fas fa-map-marker-alt"></i>
+                        \${data[0].display_name || city}
+                    \`;
+                    
+                    // Hide the manual form and load prayer times
+                    this.hideManualLocationForm();
+                    this.loadPrayerTimes();
+                    
+                } catch (error) {
+                    console.error('Error searching location:', error);
+                    coords.innerHTML = \`
+                        <i class="fas fa-exclamation-triangle"></i>
+                        \${error.message}
+                    \`;
+                }
             }
-        };
+        }
         
-        // Initialize Prayer Times
+        // Initialize Prayer Times - updated function
         function initializePrayerTimes() {
-            prayerTimesHandler.displayCurrentDate();
-            prayerTimesHandler.getUserLocation();
+            window.prayerTimesApp = new PrayerTimes();
         }
         
         // Qibla Compass Class
@@ -1483,102 +1575,98 @@ const createFullHTML = () => {
             padding: 40px;
         }
         
-        /* Prayer Times Styles */
-        .prayer-times-card {
-            background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
+        /* Prayer Times Styles - Updated from template */
+        .prayer-title {
+            color: #b8860b;
+            font-family: "Quranic";
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .prayer-subtitle {
+            color: #ffffff;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .prayer-times-container {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
             border: 2px solid #b8860b;
             border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(184, 134, 11, 0.3);
+            padding: 2rem;
+            box-shadow: 0px 7px 15px 1px rgba(184, 134, 11, 0.3);
         }
 
-        .location-header {
+        .prayer-header {
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #555555;
-        }
-
-        .location-info {
-            margin-bottom: 15px;
+            border-bottom: 1px solid #b8860b;
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         .location-title {
             color: #b8860b;
             font-size: 1.3rem;
-            margin-bottom: 10px;
+            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
         }
 
         .location-text {
             color: #ffffff;
             font-size: 1.1rem;
-            margin: 0;
-        }
-
-        .location-loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            color: #b8860b;
-        }
-
-        .location-icon {
-            color: #28a745;
-            margin-left: 8px;
-        }
-
-        .location-name {
-            color: #ffffff;
-            font-weight: 500;
-        }
-
-        .location-coords {
-            color: #b8860b;
-            font-family: monospace;
+            opacity: 0.9;
+            background: rgba(184, 134, 11, 0.1);
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            display: inline-block;
+            min-width: 200px;
         }
 
         .date-display {
+            color: #ffffff;
+            font-size: 1.1rem;
+            margin-top: 1rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            color: #b8860b;
-            font-size: 1.1rem;
+            gap: 1rem;
             flex-wrap: wrap;
         }
 
         .date-item {
             display: flex;
             align-items: center;
-            gap: 5px;
-            white-space: nowrap;
+            background: rgba(184, 134, 11, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid rgba(184, 134, 11, 0.3);
         }
 
         .date-separator {
             color: #b8860b;
+            font-size: 1.2rem;
             font-weight: bold;
         }
 
         .loading-section {
-            padding: 40px 20px;
+            padding: 3rem 0;
         }
 
         .custom-spinner {
-            margin: 0 auto 20px;
+            display: inline-block;
+            position: relative;
             width: 50px;
             height: 50px;
-            position: relative;
+            margin-bottom: 1rem;
         }
 
         .spinner-circle {
-            width: 100%;
-            height: 100%;
-            border: 4px solid #555555;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333333;
             border-top: 4px solid #b8860b;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -1597,6 +1685,183 @@ const createFullHTML = () => {
         .prayer-card {
             background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
             border: 1px solid #555555;
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .prayer-card:hover {
+            transform: translateY(-5px);
+            border-color: #b8860b;
+            box-shadow: 0 8px 20px rgba(184, 134, 11, 0.3);
+        }
+
+        .prayer-card.next-prayer {
+            background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%);
+            border-color: #d4af37;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .prayer-card.next-prayer .prayer-name,
+        .prayer-card.next-prayer .prayer-time {
+            color: #000000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(184, 134, 11, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(184, 134, 11, 0.6);
+            }
+        }
+
+        .prayer-icon {
+            font-size: 2rem;
+            color: #b8860b;
+            margin-bottom: 1rem;
+        }
+
+        .prayer-card.next-prayer .prayer-icon {
+            color: #000000;
+        }
+
+        .prayer-name {
+            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            font-family: "Quranic";
+        }
+
+        .prayer-time {
+            color: #b8860b;
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .time-remaining {
+            color: #000000;
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        .location-controls {
+            border-top: 1px solid #555555;
+            padding-top: 1.5rem;
+        }
+
+        .custom-btn {
+            background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%);
+            color: #000000;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .custom-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(184, 134, 11, 0.4);
+            background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+        }
+
+        .custom-btn.secondary {
+            background: linear-gradient(135deg, #555555 0%, #666666 100%);
+            color: #ffffff;
+        }
+
+        .custom-btn.secondary:hover {
+            background: linear-gradient(135deg, #666666 0%, #555555 100%);
+            box-shadow: 0 5px 15px rgba(85, 85, 85, 0.4);
+        }
+
+        .manual-location-form {
+            background: rgba(184, 134, 11, 0.1);
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .location-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(184, 134, 11, 0.3);
+            border-radius: 10px;
+            color: #ffffff;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .location-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #b8860b;
+            box-shadow: 0 0 10px rgba(184, 134, 11, 0.3);
+            outline: none;
+            color: #ffffff;
+        }
+
+        .location-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .location-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .mini-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(184, 134, 11, 0.3);
+            border-top: 2px solid #b8860b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
+            border: 1px solid #555555;
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+
+        .info-title {
+            color: #b8860b;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-list {
+            color: #ffffff;
+            opacity: 0.9;
+            margin: 0;
+            padding-left: 1rem;
+        }
+
+        .info-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .error-text {
+            color: #dc3545;
+            font-size: 1.1rem;
+        }
             border-radius: 15px;
             padding: 1.5rem;
             text-align: center;
@@ -1805,44 +2070,63 @@ const createFullHTML = () => {
                 grid-template-columns: 1fr !important;
             }
             
-            /* Prayer Times Mobile Styles */
-            .prayer-times-card {
-                padding: 20px;
-                margin: 0 10px;
+            /* Prayer Times Mobile Styles - Updated from template */
+            .prayer-times-container {
+                margin: 0 1rem;
+                padding: 1.5rem;
             }
             
-            .date-display {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .btn-primary, .btn-secondary {
-                width: 100%;
-                max-width: 300px;
-                justify-content: center;
+            .prayer-title {
+                font-size: 2rem;
             }
             
             .prayer-card {
-                min-height: 140px;
-                padding: 1rem;
-            }
-            
-            .prayer-name {
-                font-size: 1.1rem;
-            }
-            
-            .prayer-time {
-                font-size: 1.3rem;
+                min-height: 150px;
+                margin-bottom: 1rem;
             }
             
             .prayer-icon {
                 font-size: 1.5rem;
             }
+            
+            .prayer-time {
+                font-size: 1.2rem;
+            }
+            
+            .date-display {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .date-separator {
+                display: none;
+            }
+            
+            .location-text {
+                min-width: auto;
+                font-size: 1rem;
+                padding: 0.6rem 1rem;
+            }
+            
+            .location-title {
+                font-size: 1.2rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .prayer-card {
+                min-height: 120px;
+            }
+            
+            .prayer-times-container {
+                padding: 1rem;
+            }
+            
+            .date-item {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.95rem;
+            }
+        }
         }
         
         /* Compass Styles */
