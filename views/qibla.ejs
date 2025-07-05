@@ -139,6 +139,21 @@
 							تأكد من تمكين الموقع والبوصلة في متصفحك للحصول على أفضل النتائج
 						</small>
 					</div>
+
+					<div class="api-status mt-3">
+						<div class="row text-center">
+							<div class="col-md-6 mb-2">
+								<small id="location-api-status" class="api-indicator">
+									<i class="fas fa-circle text-secondary"></i> خدمة الموقع: جاري التحقق...
+								</small>
+							</div>
+							<div class="col-md-6 mb-2">
+								<small id="magnetic-api-status" class="api-indicator">
+									<i class="fas fa-circle text-secondary"></i> التصحيح المغناطيسي: جاري التحقق...
+								</small>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -170,6 +185,10 @@ class AdvancedQiblaCompass {
 		this.accelerometer = { x: 0, y: 0, z: 0 };
 		this.magnetometer = { x: 0, y: 0, z: 0 };
 		
+		// API endpoints
+		this.magneticDeclinationAPI = 'https://api.ngdc.noaa.gov/geomag/v1/declination';
+		this.ipLocationAPI = 'https://ipapi.co/json/';
+		
 		this.init();
 	}
 
@@ -177,6 +196,114 @@ class AdvancedQiblaCompass {
 		this.getUserLocation();
 		this.setupEventListeners();
 		this.startCompass();
+		// Try to get initial location from IP if GPS fails
+		this.getLocationFromIP();
+	}
+
+	async getLocationFromIP() {
+		try {
+			this.updateAPIStatus('location', 'checking', 'جاري الحصول على الموقع من IP...');
+			
+			const response = await fetch(this.ipLocationAPI);
+			const data = await response.json();
+			
+			if (data.latitude && data.longitude) {
+				this.updateAPIStatus('location', 'success', 'تم الحصول على الموقع من IP');
+				
+				// Only use IP location as fallback if GPS isn't available
+				if (!this.userLocation) {
+					this.userLocation = {
+						lat: data.latitude,
+						lng: data.longitude,
+						accuracy: 10000, // IP location is less accurate
+						source: 'IP'
+					};
+					this.updateLocationDisplay();
+					this.calculateQiblaDirection();
+					this.calculateDistanceToMecca();
+					this.getMagneticDeclination();
+				}
+			} else {
+				this.updateAPIStatus('location', 'error', 'فشل في الحصول على الموقع من IP');
+			}
+		} catch (error) {
+			console.warn('IP location fallback failed:', error);
+			this.updateAPIStatus('location', 'error', 'خطأ في خدمة الموقع');
+		}
+	}
+
+	async getMagneticDeclination() {
+		if (!this.userLocation) return;
+		
+		try {
+			this.updateAPIStatus('magnetic', 'checking', 'جاري الحصول على التصحيح المغناطيسي...');
+			
+			const url = `${this.magneticDeclinationAPI}?lat=${this.userLocation.lat}&lon=${this.userLocation.lng}&resultFormat=json`;
+			const response = await fetch(url);
+			const data = await response.json();
+			
+			if (data.result && data.result[0]) {
+				this.magneticDeclination = data.result[0].declination || 0;
+				this.updateAPIStatus('magnetic', 'success', `التصحيح المغناطيسي: ${this.magneticDeclination.toFixed(1)}°`);
+				console.log(`Magnetic declination: ${this.magneticDeclination}°`);
+			} else {
+				throw new Error('Invalid API response');
+			}
+		} catch (error) {
+			console.warn('Failed to get magnetic declination:', error);
+			// Use approximate declination based on location
+			this.magneticDeclination = this.estimateMagneticDeclination();
+			this.updateAPIStatus('magnetic', 'warning', `تقدير التصحيح: ${this.magneticDeclination.toFixed(1)}°`);
+		}
+	}
+
+	updateAPIStatus(type, status, message) {
+		const elementId = type === 'location' ? 'location-api-status' : 'magnetic-api-status';
+		const element = document.getElementById(elementId);
+		
+		if (!element) return;
+		
+		let icon, color;
+		
+		switch (status) {
+			case 'success':
+				icon = 'fas fa-check-circle';
+				color = 'text-success';
+				break;
+			case 'error':
+				icon = 'fas fa-times-circle';
+				color = 'text-danger';
+				break;
+			case 'warning':
+				icon = 'fas fa-exclamation-triangle';
+				color = 'text-warning';
+				break;
+			case 'checking':
+				icon = 'fas fa-spinner fa-spin';
+				color = 'text-info';
+				break;
+			default:
+				icon = 'fas fa-circle';
+				color = 'text-secondary';
+		}
+		
+		element.innerHTML = `<i class="${icon} ${color}"></i> ${message}`;
+	}
+
+	estimateMagneticDeclination() {
+		if (!this.userLocation) return 0;
+		
+		const lat = this.userLocation.lat;
+		const lng = this.userLocation.lng;
+		
+		// Rough estimates for different regions
+		if (lat > 60) return 15; // Northern regions
+		if (lat < -60) return -15; // Southern regions
+		if (lng > 100 && lng < 180) return -5; // Asia-Pacific
+		if (lng > -180 && lng < -60) return 10; // Americas
+		if (lng > -10 && lng < 40) return 2; // Europe/Africa
+		
+		return 0; // Default
 	}
 
 	setupEventListeners() {
@@ -191,24 +318,33 @@ class AdvancedQiblaCompass {
 
 	getUserLocation() {
 		if (!navigator.geolocation) {
-			this.showError('الجهاز لا يدعم تحديد الموقع');
+			this.showError('الجهاز لا يدعم تحديد الموقع - سيتم استخدام الموقع التقريبي');
+			this.updateAPIStatus('location', 'warning', 'GPS غير متاح - استخدام IP');
 			return;
 		}
 
 		document.getElementById('coordinates').textContent = 'جاري تحديد الموقع...';
+		this.updateAPIStatus('location', 'checking', 'جاري تحديد الموقع بـ GPS...');
 
 		navigator.geolocation.getCurrentPosition(
 			(position) => {
 				this.userLocation = {
 					lat: position.coords.latitude,
-					lng: position.coords.longitude
+					lng: position.coords.longitude,
+					accuracy: position.coords.accuracy,
+					source: 'GPS'
 				};
+				this.updateAPIStatus('location', 'success', `GPS متصل - دقة: ±${Math.round(position.coords.accuracy)}م`);
 				this.updateLocationDisplay();
-		this.calculateQiblaDirection();
-		this.calculateDistanceToMecca();
+				this.calculateQiblaDirection();
+				this.calculateDistanceToMecca();
+				this.getMagneticDeclination();
 			},
 			(error) => {
-				this.showError('فشل في تحديد الموقع: ' + error.message);
+				console.warn('GPS failed:', error);
+				this.showError('فشل في تحديد الموقع بدقة - جاري استخدام الموقع التقريبي');
+				this.updateAPIStatus('location', 'warning', 'GPS فشل - التبديل إلى IP');
+				// IP location fallback will be handled by getLocationFromIP()
 			},
 			{
 				enableHighAccuracy: true,
@@ -221,20 +357,30 @@ class AdvancedQiblaCompass {
 	updateLocationDisplay() {
 		const coords = document.getElementById('coordinates');
 		const accuracy = this.userLocation.accuracy || 0;
+		const source = this.userLocation.source || 'Unknown';
 		let accuracyText = '';
+		let sourceIcon = '';
 		
-		if (accuracy <= 10) {
-			accuracyText = '<span class="text-success">دقة عالية</span>';
-		} else if (accuracy <= 50) {
-			accuracyText = '<span class="text-warning">دقة متوسطة</span>';
-		} else {
-			accuracyText = '<span class="text-danger">دقة منخفضة</span>';
+		if (source === 'GPS') {
+			sourceIcon = '<i class="fas fa-satellite-dish text-success"></i>';
+			if (accuracy <= 10) {
+				accuracyText = '<span class="text-success">دقة عالية جداً</span>';
+			} else if (accuracy <= 50) {
+				accuracyText = '<span class="text-info">دقة عالية</span>';
+			} else if (accuracy <= 100) {
+				accuracyText = '<span class="text-warning">دقة متوسطة</span>';
+			} else {
+				accuracyText = '<span class="text-danger">دقة منخفضة</span>';
+			}
+		} else if (source === 'IP') {
+			sourceIcon = '<i class="fas fa-wifi text-warning"></i>';
+			accuracyText = '<span class="text-warning">موقع تقريبي</span>';
 		}
 
 		coords.innerHTML = `
-			<i class="fas fa-map-marker-alt text-success"></i>
+			${sourceIcon}
 			${this.userLocation.lat.toFixed(6)}°, ${this.userLocation.lng.toFixed(6)}°
-			<br><small>${accuracyText} (±${Math.round(accuracy)}م)</small>
+			<br><small>${accuracyText} ${accuracy > 0 ? `(±${Math.round(accuracy)}م)` : ''}</small>
 		`;
 	}
 
@@ -334,6 +480,11 @@ class AdvancedQiblaCompass {
 				heading = 360 + heading;
 			}
 			
+			// Apply magnetic declination correction
+			heading = heading + this.magneticDeclination;
+			if (heading < 0) heading += 360;
+			if (heading >= 360) heading -= 360;
+			
 			// Smooth the heading to reduce jitter
 			if (this.deviceHeading !== 0) {
 				const diff = heading - this.deviceHeading;
@@ -350,6 +501,10 @@ class AdvancedQiblaCompass {
 			} else {
 				this.deviceHeading = heading;
 			}
+			
+			// Normalize heading
+			if (this.deviceHeading < 0) this.deviceHeading += 360;
+			if (this.deviceHeading >= 360) this.deviceHeading -= 360;
 			
 			this.updateNeedles();
 		}
@@ -393,26 +548,23 @@ class AdvancedQiblaCompass {
 		
 		if (!indicator || !statusBox) return;
 		
-		let diff = Math.abs(this.deviceHeading - this.qiblaDirection);
-		if (diff > 180) {
-			diff = 360 - diff;
-		}
+		const diff = this.calculateAccuracy();
 		
 		let status, className, boxClassName;
 		
-		if (diff <= 3) {
-			status = 'مثالي ✓✓';
+		if (diff <= 2) {
+			status = 'مثالي ✓✓✓';
 			className = 'info-value perfect';
 			boxClassName = 'qibla-info-box p-3 perfect-box';
-		} else if (diff <= 8) {
-			status = 'دقيق جداً ✓';
+		} else if (diff <= 5) {
+			status = 'دقيق جداً ✓✓';
 			className = 'info-value accurate';
 			boxClassName = 'qibla-info-box p-3 accurate-box';
-		} else if (diff <= 15) {
-			status = 'دقيق';
+		} else if (diff <= 10) {
+			status = 'دقيق ✓';
 			className = 'info-value good';
 			boxClassName = 'qibla-info-box p-3 good-box';
-		} else if (diff <= 30) {
+		} else if (diff <= 20) {
 			status = 'قريب';
 			className = 'info-value close';
 			boxClassName = 'qibla-info-box p-3 close-box';
@@ -420,6 +572,11 @@ class AdvancedQiblaCompass {
 			status = 'بعيد';
 			className = 'info-value far';
 			boxClassName = 'qibla-info-box p-3 far-box';
+		}
+		
+		// Add magnetic declination info
+		if (Math.abs(this.magneticDeclination) > 0) {
+			status += ` (تصحيح: ${this.magneticDeclination.toFixed(1)}°)`;
 		}
 		
 		indicator.textContent = status;
@@ -430,9 +587,39 @@ class AdvancedQiblaCompass {
 	calibrateCompass() {
 		// Reset and recalibrate
 		this.deviceHeading = 0;
+		this.headingHistory = [];
 		if (this.userLocation) {
 			this.calculateQiblaDirection();
+			this.getMagneticDeclination();
 		}
+		
+		// Show calibration message
+		const coords = document.getElementById('coordinates');
+		const originalHTML = coords.innerHTML;
+		coords.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> جاري إعادة المعايرة...';
+		
+		setTimeout(() => {
+			coords.innerHTML = originalHTML;
+		}, 2000);
+	}
+
+	// Enhanced accuracy calculation
+	calculateAccuracy() {
+		if (this.qiblaDirection === null) return 0;
+		
+		let diff = Math.abs(this.deviceHeading - this.qiblaDirection);
+		if (diff > 180) {
+			diff = 360 - diff;
+		}
+		
+		// Consider magnetic declination accuracy
+		const declinationFactor = Math.abs(this.magneticDeclination) > 20 ? 0.8 : 1.0;
+		
+		// Consider GPS accuracy
+		const gpsAccuracy = this.userLocation?.accuracy || 1000;
+		const gpsFactor = gpsAccuracy <= 10 ? 1.0 : (gpsAccuracy <= 50 ? 0.9 : 0.8);
+		
+		return diff * declinationFactor * gpsFactor;
 	}
 
 	toRadians(degrees) {
@@ -930,6 +1117,24 @@ document.addEventListener('DOMContentLoaded', () => {
 .qibla-alert i {
 	color: #b8860b;
 	margin-left: 0.5rem;
+}
+
+/* API Status indicators */
+.api-status {
+	background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+	border: 1px solid #444444;
+	border-radius: 10px;
+	padding: 0.8rem;
+}
+
+.api-indicator {
+	color: #cccccc;
+	font-size: 0.85rem;
+	display: inline-block;
+}
+
+.api-indicator i {
+	margin-right: 0.3rem;
 }
 
 /* Responsive design */
