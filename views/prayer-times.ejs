@@ -1,0 +1,507 @@
+<nav class="navbar navbar-expand-lg navbar-light">
+	<div class="container-xxl">
+		<a class="navbar-brand d-flex" href="/">
+			<i class="fas fa-mosque" style="margin-left: 10px; font-size: 1.8rem;"></i>
+			 القرآن الكريم
+		</a>
+		<button
+			class="navbar-toggler"
+			type="button"
+			data-bs-toggle="collapse"
+			data-bs-target="#navbarNav"
+			aria-controls="navbarNav"
+			aria-expanded="false"
+			aria-label="Toggle navigation"
+		>
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="collapse navbar-collapse" id="navbarNav">
+			<ul class="navbar-nav">
+				<li class="nav-item me-3">
+					<a class="nav-link" href="/">الرئيسية</a>
+				</li>
+				<li class="nav-item me-3">
+					<a class="nav-link" href="/surahs">السور</a>
+				</li>
+				<li class="nav-item me-3">
+					<a class="nav-link" href="/search">البحث</a>
+				</li>
+				<li class="nav-item me-3">
+					<a class="nav-link" href="/qibla">اتجاه القبلة</a>
+				</li>
+				<li class="nav-item me-3">
+					<a class="nav-link active" aria-current="page" href="/prayer-times">أوقات الصلاة</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+</nav>
+
+<div class="container my-5">
+	<div class="text-center mb-4">
+		<h1 class="prayer-title">أوقات الصلاة</h1>
+		<p class="prayer-subtitle">اعرف أوقات الصلوات الخمس حسب موقعك</p>
+	</div>
+
+	<div class="row justify-content-center">
+		<div class="col-md-10">
+			<div class="prayer-times-container">
+				<div class="prayer-header">
+					<div id="location-info" class="mb-4">
+						<h5 class="location-title">الموقع الحالي</h5>
+						<p id="coordinates" class="location-text">جاري تحديد الموقع...</p>
+					</div>
+					<div id="current-date" class="date-display">
+						<span id="hijri-date"></span> - <span id="gregorian-date"></span>
+					</div>
+				</div>
+
+				<div id="prayer-times-loading" class="text-center loading-section">
+					<div class="custom-spinner">
+						<div class="spinner-circle"></div>
+					</div>
+					<p class="loading-text">جاري تحميل أوقات الصلاة...</p>
+				</div>
+
+				<div id="prayer-times-container" class="d-none">
+					<div class="row" id="prayer-times"></div>
+				</div>
+
+				<div class="location-controls mt-4 text-center">
+					<button id="get-location-btn" class="custom-btn">
+						<i class="fas fa-map-marker-alt"></i> تحديث الموقع
+					</button>
+				</div>
+
+				<div class="prayer-info mt-4">
+					<div class="info-card">
+						<h6 class="info-title">
+							<i class="fas fa-info-circle"></i>
+							معلومات مهمة
+						</h6>
+						<ul class="info-list">
+							<li>الأوقات محسوبة حسب موقعك الجغرافي</li>
+							<li>يُنصح بالتأكد من الأوقات مع المسجد المحلي</li>
+							<li>تأكد من تمكين الموقع في المتصفح</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+class PrayerTimes {
+	constructor() {
+		this.userLocation = null;
+		this.init();
+	}
+
+	init() {
+		this.displayCurrentDate();
+		this.getUserLocation();
+		this.setupEventListeners();
+	}
+
+	setupEventListeners() {
+		document.getElementById('get-location-btn').addEventListener('click', () => {
+			this.getUserLocation();
+		});
+	}
+
+	displayCurrentDate() {
+		const today = new Date();
+		const gregorianDate = today.toLocaleDateString('ar-SA', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric',
+			weekday: 'long'
+		});
+		
+		// Get Hijri date (simplified)
+		const hijriDate = this.getHijriDate(today);
+		
+		document.getElementById('gregorian-date').textContent = gregorianDate;
+		document.getElementById('hijri-date').textContent = hijriDate;
+	}
+
+	getHijriDate(date) {
+		// Simplified Hijri date calculation
+		// In a real app, you'd use a proper Hijri calendar library
+		const hijriYear = Math.floor((date.getFullYear() - 622) * 1.030684);
+		const months = [
+			'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
+			'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
+		];
+		const month = months[date.getMonth()];
+		return `${date.getDate()} ${month} ${hijriYear + 622}`;
+	}
+
+	getUserLocation() {
+		if (!navigator.geolocation) {
+			this.showError('الجهاز لا يدعم تحديد الموقع');
+			return;
+		}
+
+		document.getElementById('coordinates').textContent = 'جاري تحديد الموقع...';
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				this.userLocation = {
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				};
+				this.updateLocationDisplay();
+				this.loadPrayerTimes();
+			},
+			(error) => {
+				this.showError('فشل في تحديد الموقع: ' + error.message);
+			},
+			{
+				enableHighAccuracy: true,
+				timeout: 10000,
+				maximumAge: 300000
+			}
+		);
+	}
+
+	updateLocationDisplay() {
+		const coords = document.getElementById('coordinates');
+		coords.innerHTML = `
+			<i class="fas fa-map-marker-alt"></i>
+			${this.userLocation.lat.toFixed(4)}°, ${this.userLocation.lng.toFixed(4)}°
+		`;
+	}
+
+	loadPrayerTimes() {
+		if (!this.userLocation) return;
+
+		const today = new Date();
+		const year = today.getFullYear();
+		const month = today.getMonth() + 1;
+		const day = today.getDate();
+
+		fetch(`https://api.aladhan.com/v1/timings/${day}-${month}-${year}?latitude=${this.userLocation.lat}&longitude=${this.userLocation.lng}&method=4`)
+			.then(response => response.json())
+			.then(data => {
+				this.displayPrayerTimes(data.data.timings);
+			})
+			.catch(error => {
+				console.error('Error loading prayer times:', error);
+				document.getElementById('prayer-times-loading').innerHTML = 
+					'<p class="error-text">فشل في تحميل أوقات الصلاة</p>';
+			});
+	}
+
+	displayPrayerTimes(timings) {
+		const prayers = [
+			{ key: 'Fajr', name: 'الفجر', icon: 'fas fa-sun' },
+			{ key: 'Dhuhr', name: 'الظهر', icon: 'fas fa-sun' },
+			{ key: 'Asr', name: 'العصر', icon: 'fas fa-cloud-sun' },
+			{ key: 'Maghrib', name: 'المغرب', icon: 'fas fa-moon' },
+			{ key: 'Isha', name: 'العشاء', icon: 'fas fa-moon' }
+		];
+
+		const currentTime = new Date();
+		const currentTimeString = currentTime.toTimeString().slice(0, 5);
+
+		let html = '';
+		prayers.forEach(prayer => {
+			const isNext = this.isNextPrayer(currentTimeString, timings[prayer.key]);
+			const timeLeft = this.calculateTimeLeft(currentTimeString, timings[prayer.key]);
+			
+			html += `
+				<div class="col-md-4 col-lg-2 mb-4">
+					<div class="prayer-card ${isNext ? 'next-prayer' : ''}">
+						<div class="prayer-icon">
+							<i class="${prayer.icon}"></i>
+						</div>
+						<h6 class="prayer-name">${prayer.name}</h6>
+						<div class="prayer-time">${timings[prayer.key]}</div>
+						${isNext ? `<div class="time-remaining">${timeLeft}</div>` : ''}
+					</div>
+				</div>
+			`;
+		});
+
+		document.getElementById('prayer-times').innerHTML = html;
+		document.getElementById('prayer-times-loading').classList.add('d-none');
+		document.getElementById('prayer-times-container').classList.remove('d-none');
+	}
+
+	isNextPrayer(currentTime, prayerTime) {
+		const current = this.timeToMinutes(currentTime);
+		const prayer = this.timeToMinutes(prayerTime);
+		return prayer > current;
+	}
+
+	calculateTimeLeft(currentTime, prayerTime) {
+		const current = this.timeToMinutes(currentTime);
+		const prayer = this.timeToMinutes(prayerTime);
+		
+		if (prayer <= current) return '';
+		
+		const diff = prayer - current;
+		const hours = Math.floor(diff / 60);
+		const minutes = diff % 60;
+		
+		if (hours > 0) {
+			return `${hours}:${minutes.toString().padStart(2, '0')} ساعة`;
+		} else {
+			return `${minutes} دقيقة`;
+		}
+	}
+
+	timeToMinutes(timeString) {
+		const [hours, minutes] = timeString.split(':').map(Number);
+		return hours * 60 + minutes;
+	}
+
+	showError(message) {
+		document.getElementById('coordinates').innerHTML = 
+			`<i class="fas fa-exclamation-triangle"></i> ${message}`;
+	}
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', () => {
+	new PrayerTimes();
+});
+</script>
+
+<style>
+.prayer-title {
+	color: #b8860b;
+	font-family: "Quranic";
+	font-size: 2.5rem;
+	margin-bottom: 1rem;
+}
+
+.prayer-subtitle {
+	color: #ffffff;
+	font-size: 1.2rem;
+	opacity: 0.9;
+}
+
+.prayer-times-container {
+	background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+	border: 2px solid #b8860b;
+	border-radius: 20px;
+	padding: 2rem;
+	box-shadow: 0px 7px 15px 1px rgba(184, 134, 11, 0.3);
+}
+
+.prayer-header {
+	text-align: center;
+	border-bottom: 1px solid #b8860b;
+	padding-bottom: 1.5rem;
+	margin-bottom: 2rem;
+}
+
+.location-title {
+	color: #b8860b;
+	font-size: 1.3rem;
+	margin-bottom: 0.5rem;
+}
+
+.location-text {
+	color: #ffffff;
+	font-size: 1rem;
+	opacity: 0.9;
+}
+
+.date-display {
+	color: #ffffff;
+	font-size: 1.1rem;
+	margin-top: 1rem;
+}
+
+.loading-section {
+	padding: 3rem 0;
+}
+
+.custom-spinner {
+	display: inline-block;
+	position: relative;
+	width: 50px;
+	height: 50px;
+	margin-bottom: 1rem;
+}
+
+.spinner-circle {
+	width: 50px;
+	height: 50px;
+	border: 4px solid #333333;
+	border-top: 4px solid #b8860b;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+	color: #ffffff;
+	font-size: 1.1rem;
+}
+
+.prayer-card {
+	background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
+	border: 1px solid #555555;
+	border-radius: 15px;
+	padding: 1.5rem;
+	text-align: center;
+	transition: all 0.3s ease;
+	height: 100%;
+	min-height: 180px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.prayer-card:hover {
+	transform: translateY(-5px);
+	border-color: #b8860b;
+	box-shadow: 0 8px 20px rgba(184, 134, 11, 0.3);
+}
+
+.prayer-card.next-prayer {
+	background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%);
+	border-color: #d4af37;
+	animation: pulse 2s ease-in-out infinite;
+}
+
+.prayer-card.next-prayer .prayer-name,
+.prayer-card.next-prayer .prayer-time {
+	color: #000000;
+}
+
+@keyframes pulse {
+	0%, 100% { 
+		box-shadow: 0 0 20px rgba(184, 134, 11, 0.3);
+	}
+	50% { 
+		box-shadow: 0 0 30px rgba(184, 134, 11, 0.6);
+	}
+}
+
+.prayer-icon {
+	font-size: 2rem;
+	color: #b8860b;
+	margin-bottom: 1rem;
+}
+
+.prayer-card.next-prayer .prayer-icon {
+	color: #000000;
+}
+
+.prayer-name {
+	color: #ffffff;
+	font-size: 1.2rem;
+	font-weight: 600;
+	margin-bottom: 0.8rem;
+	font-family: "Quranic";
+}
+
+.prayer-time {
+	color: #b8860b;
+	font-size: 1.4rem;
+	font-weight: bold;
+	margin-bottom: 0.5rem;
+}
+
+.time-remaining {
+	color: #000000;
+	font-size: 0.9rem;
+	font-weight: 500;
+	opacity: 0.8;
+}
+
+.location-controls {
+	border-top: 1px solid #555555;
+	padding-top: 1.5rem;
+}
+
+.custom-btn {
+	background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%);
+	color: #000000;
+	border: none;
+	padding: 0.8rem 1.5rem;
+	border-radius: 25px;
+	font-weight: 600;
+	transition: all 0.3s ease;
+	cursor: pointer;
+}
+
+.custom-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 5px 15px rgba(184, 134, 11, 0.4);
+	background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+}
+
+.info-card {
+	background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
+	border: 1px solid #555555;
+	border-radius: 15px;
+	padding: 1.5rem;
+}
+
+.info-title {
+	color: #b8860b;
+	font-size: 1.1rem;
+	margin-bottom: 1rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.info-list {
+	color: #ffffff;
+	opacity: 0.9;
+	margin: 0;
+	padding-left: 1rem;
+}
+
+.info-list li {
+	margin-bottom: 0.5rem;
+}
+
+.error-text {
+	color: #dc3545;
+	font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.prayer-times-container {
+		margin: 0 1rem;
+		padding: 1.5rem;
+	}
+	
+	.prayer-title {
+		font-size: 2rem;
+	}
+	
+	.prayer-card {
+		min-height: 150px;
+		margin-bottom: 1rem;
+	}
+	
+	.prayer-icon {
+		font-size: 1.5rem;
+	}
+	
+	.prayer-time {
+		font-size: 1.2rem;
+	}
+}
+
+@media (max-width: 576px) {
+	.prayer-card {
+		min-height: 120px;
+	}
+}
+</style>

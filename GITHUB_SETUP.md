@@ -1,4 +1,4 @@
-# 🚀 Final Deployment Instructions
+# 🚀 GitHub Setup & Deployment Guide
 
 ## 📁 What's Ready
 ✅ README.md - Comprehensive documentation
@@ -22,15 +22,22 @@ git init
 git add .
 
 # Commit with a meaningful message
-git commit -m "🕌 Initial release: Complete Quran Platform v1.0.0
+git commit -m "🕌 Complete Quran Platform v1.0.0
 
-Features:
+✨ Features:
 - Full Quran text with 114 Surahs
 - Audio playback by Sheikh Mishary Alafasy  
 - Advanced search with Arabic normalization
 - Responsive Islamic-themed design
-- Tafsir integration
-- Mobile-friendly interface"
+- Tafsir integration (Arabic commentary)
+- Mobile-friendly interface
+- Real-time verse highlighting
+
+🔧 Technical:
+- Node.js 18.x with Express.js
+- Bootstrap 5.3.2 responsive framework
+- Font Awesome 6.5.0 icons
+- Static build for GitHub Pages deployment"
 
 # Connect to your GitHub repository
 git remote add origin https://github.com/yassin287/quraan.git

@@ -181,6 +181,17 @@ app.get("/surah/:choosenSurah", (req, res) => {
 		}
 	});
 });
+
+// New route for Qibla compass
+app.get("/qibla", (req, res) => {
+	res.render("qibla");
+});
+
+// New route for Prayer Times
+app.get("/prayer-times", (req, res) => {
+	res.render("prayer-times");
+});
+
 app.listen(process.env.PORT || 3000, function () {
 	console.log("server is running ON Port 3000");
 });
