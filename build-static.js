@@ -921,31 +921,73 @@ const createFullHTML = () => {
 
                 <div class="row justify-content-center">
                     <div class="col-md-10">
-                        <div style="background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%); border: 2px solid #b8860b; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(184, 134, 11, 0.3);">
+                        <div class="prayer-times-card">
                             
-                            <div class="text-center mb-4">
-                                <div id="location-display" style="color: #ffffff;">
-                                    <i class="fas fa-map-marker-alt" style="color: #b8860b;"></i>
-                                    <span id="city-name">جاري تحديد الموقع...</span>
+                            <div class="location-header">
+                                <div class="location-info">
+                                    <h5 class="location-title">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        الموقع الحالي
+                                    </h5>
+                                    <p id="coordinates" class="location-text">جاري تحديد الموقع...</p>
                                 </div>
-                                <div id="current-date" style="color: #b8860b; font-size: 1.2rem; margin-top: 10px;"></div>
+                                <div id="current-date" class="date-display">
+                                    <div class="date-item">
+                                        <i class="fas fa-calendar-islamic me-2"></i>
+                                        <span id="hijri-date"></span>
+                                    </div>
+                                    <div class="date-separator">•</div>
+                                    <div class="date-item">
+                                        <i class="fas fa-calendar-alt me-2"></i>
+                                        <span id="gregorian-date"></span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div id="prayer-times-loading" class="text-center">
-                                <div style="color: #b8860b;">
-                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
-                                    <p style="margin-top: 15px;">جاري تحميل أوقات الصلاة...</p>
+                            <div id="prayer-times-loading" class="text-center loading-section">
+                                <div class="custom-spinner">
+                                    <div class="spinner-circle"></div>
                                 </div>
+                                <p class="loading-text">جاري تحميل أوقات الصلاة...</p>
                             </div>
 
                             <div id="prayer-times-container" class="d-none">
                                 <div class="row" id="prayer-times"></div>
                                 
                                 <div class="text-center mt-4">
-                                    <button onclick="loadPrayerTimesForLocation()" style="background: linear-gradient(135deg, #b8860b 0%, #d4af37 100%); color: #000000; border: none; padding: 12px 25px; border-radius: 25px; font-weight: bold;">
-                                        <i class="fas fa-sync-alt"></i> تحديث الأوقات
-                                    </button>
+                                    <div class="action-buttons">
+                                        <button onclick="prayerTimesHandler.getUserLocation()" class="btn-primary">
+                                            <i class="fas fa-sync-alt"></i> تحديث الأوقات
+                                        </button>
+                                        <button onclick="prayerTimesHandler.showManualLocationForm()" class="btn-secondary">
+                                            <i class="fas fa-edit"></i> إدخال الموقع يدوياً
+                                        </button>
+                                    </div>
                                 </div>
+                                
+                                <!-- Manual Location Form -->
+                                <div id="manual-location-form" class="manual-form">
+                                    <h6><i class="fas fa-map-marker-alt"></i> إدخال الموقع يدوياً</h6>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="manual-city">اسم المدينة:</label>
+                                            <input type="text" id="manual-city" placeholder="مثال: القاهرة، الرياض، دبي">
+                                        </div>
+                                    </div>
+                                    <div class="form-buttons">
+                                        <button onclick="prayerTimesHandler.loadPrayerTimesByCity()" class="btn-primary">
+                                            <i class="fas fa-search"></i> البحث عن الأوقات
+                                        </button>
+                                        <button onclick="prayerTimesHandler.hideManualLocationForm()" class="btn-secondary">
+                                            <i class="fas fa-times"></i> إلغاء
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="prayer-error" class="error-message d-none">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span id="error-text"></span>
                             </div>
                         </div>
                     </div>
@@ -962,87 +1004,298 @@ const createFullHTML = () => {
             window.compass = new QiblaCompass();
         }
         
-        // Initialize Prayer Times
-        function initializePrayerTimes() {
-            updateCurrentDate();
-            loadPrayerTimesForLocation();
-        }
-        
-        function updateCurrentDate() {
-            const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                locale: 'ar-SA'
-            };
-            document.getElementById('current-date').textContent = now.toLocaleDateString('ar-SA', options);
-        }
-        
-        function loadPrayerTimesForLocation() {
-            if (!navigator.geolocation) {
-                showPrayerError('الجهاز لا يدعم تحديد الموقع');
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    loadPrayerTimes(lat, lng);
-                },
-                (error) => {
-                    showPrayerError('فشل في تحديد الموقع: ' + error.message);
+        // Prayer Times Handler
+        const prayerTimesHandler = {
+            userLocation: null,
+            
+            getUserLocation() {
+                if (!navigator.geolocation) {
+                    this.showError('الجهاز لا يدعم تحديد الموقع');
+                    return;
                 }
-            );
-        }
-        
-        async function loadPrayerTimes(lat, lng) {
-            try {
-                const today = new Date();
-                const response = await fetch(\`https://api.aladhan.com/v1/timings/\${today.getDate()}-\${today.getMonth() + 1}-\${today.getFullYear()}?latitude=\${lat}&longitude=\${lng}&method=4\`);
-                const data = await response.json();
-                
-                displayPrayerTimes(data.data.timings);
-            } catch (error) {
-                showPrayerError('فشل في تحميل أوقات الصلاة');
-            }
-        }
-        
-        function displayPrayerTimes(timings) {
-            const prayerNames = {
-                'Fajr': 'الفجر',
-                'Dhuhr': 'الظهر', 
-                'Asr': 'العصر',
-                'Maghrib': 'المغرب',
-                'Isha': 'العشاء'
-            };
 
-            let html = '';
-            Object.keys(prayerNames).forEach(prayer => {
-                html += \`
-                    <div class="col-md-2-4 mb-3">
-                        <div style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border: 2px solid #b8860b; border-radius: 15px; padding: 25px; text-align: center; transition: all 0.3s ease;">
-                            <h5 style="color: #b8860b; margin-bottom: 15px;">\${prayerNames[prayer]}</h5>
-                            <span style="color: #ffffff; font-size: 1.5rem; font-weight: bold;">\${timings[prayer]}</span>
-                        </div>
+                // Show improved loading state
+                document.getElementById('coordinates').innerHTML = \`
+                    <div class="location-loading">
+                        <div class="mini-spinner"></div>
+                        جاري تحديد الموقع...
                     </div>
                 \`;
-            });
 
-            document.getElementById('prayer-times').innerHTML = html;
-            document.getElementById('prayer-times-loading').classList.add('d-none');
-            document.getElementById('prayer-times-container').classList.remove('d-none');
-        }
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        this.userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        this.updateLocationDisplay();
+                        this.loadPrayerTimes();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        this.showError('فشل في تحديد الموقع تلقائياً. يرجى إدخال المدينة يدوياً.');
+                        this.showManualLocationForm();
+                    }
+                );
+            },
+
+            async updateLocationDisplay() {
+                if (!this.userLocation) return;
+
+                try {
+                    // Try Nominatim first
+                    const nominatimUrl = \`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${this.userLocation.lat}&lon=\${this.userLocation.lng}&accept-language=ar\`;
+                    const nominatimResponse = await fetch(nominatimUrl);
+                    const nominatimData = await nominatimResponse.json();
+
+                    if (nominatimData && nominatimData.address) {
+                        const address = nominatimData.address;
+                        let locationText = '';
+                        
+                        if (address.neighbourhood || address.suburb || address.district) {
+                            locationText += (address.neighbourhood || address.suburb || address.district) + ' / ';
+                        }
+                        if (address.city || address.town || address.village) {
+                            locationText += (address.city || address.town || address.village);
+                        } else if (address.county) {
+                            locationText += address.county;
+                        } else if (address.state) {
+                            locationText += address.state;
+                        }
+
+                        if (locationText) {
+                            document.getElementById('coordinates').innerHTML = \`
+                                <i class="fas fa-map-marker-alt location-icon"></i>
+                                <span class="location-name">\${locationText}</span>
+                            \`;
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Nominatim failed, trying BigDataCloud:', error);
+                }
+
+                try {
+                    // Fallback to BigDataCloud
+                    const bigDataUrl = \`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=\${this.userLocation.lat}&longitude=\${this.userLocation.lng}&localityLanguage=ar\`;
+                    const bigDataResponse = await fetch(bigDataUrl);
+                    const bigDataData = await bigDataResponse.json();
+
+                    if (bigDataData) {
+                        let locationText = '';
+                        if (bigDataData.locality) {
+                            locationText += bigDataData.locality + ' / ';
+                        }
+                        if (bigDataData.city) {
+                            locationText += bigDataData.city;
+                        } else if (bigDataData.principalSubdivision) {
+                            locationText += bigDataData.principalSubdivision;
+                        }
+
+                        if (locationText) {
+                            document.getElementById('coordinates').innerHTML = \`
+                                <i class="fas fa-map-marker-alt location-icon"></i>
+                                <span class="location-name">\${locationText}</span>
+                            \`;
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('BigDataCloud also failed:', error);
+                }
+
+                // Fallback to coordinates
+                document.getElementById('coordinates').innerHTML = \`
+                    <i class="fas fa-map-marker-alt location-icon"></i>
+                    <span class="location-coords">\${this.userLocation.lat.toFixed(4)}°, \${this.userLocation.lng.toFixed(4)}°</span>
+                \`;
+            },
+
+            async loadPrayerTimes() {
+                if (!this.userLocation) {
+                    this.showError('لم يتم تحديد الموقع بعد');
+                    return;
+                }
+
+                try {
+                    const today = new Date();
+                    const response = await fetch(\`https://api.aladhan.com/v1/timings/\${today.getDate()}-\${today.getMonth() + 1}-\${today.getFullYear()}?latitude=\${this.userLocation.lat}&longitude=\${this.userLocation.lng}&method=4\`);
+                    const data = await response.json();
+                    
+                    if (data.code === 200) {
+                        this.displayPrayerTimes(data.data.timings);
+                    } else {
+                        throw new Error('API returned error');
+                    }
+                } catch (error) {
+                    console.error('Prayer times error:', error);
+                    this.showError('فشل في تحميل أوقات الصلاة. يرجى المحاولة مرة أخرى.');
+                }
+            },
+
+            async loadPrayerTimesByCity() {
+                const cityName = document.getElementById('manual-city').value.trim();
+                if (!cityName) {
+                    this.showError('يرجى إدخال اسم المدينة');
+                    return;
+                }
+
+                try {
+                    // Show loading
+                    document.getElementById('coordinates').innerHTML = \`
+                        <div class="location-loading">
+                            <div class="mini-spinner"></div>
+                            جاري البحث عن \${cityName}...
+                        </div>
+                    \`;
+
+                    const today = new Date();
+                    const response = await fetch(\`https://api.aladhan.com/v1/timingsByCity/\${today.getDate()}-\${today.getMonth() + 1}-\${today.getFullYear()}?city=\${encodeURIComponent(cityName)}&method=4\`);
+                    const data = await response.json();
+                    
+                    if (data.code === 200) {
+                        // Update location display with city name
+                        document.getElementById('coordinates').innerHTML = \`
+                            <i class="fas fa-map-marker-alt location-icon"></i>
+                            <span class="location-name">\${cityName}</span>
+                        \`;
+                        
+                        this.displayPrayerTimes(data.data.timings);
+                        this.hideManualLocationForm();
+                    } else {
+                        throw new Error('City not found');
+                    }
+                } catch (error) {
+                    console.error('City search error:', error);
+                    this.showError('لم يتم العثور على المدينة. تأكد من اسم المدينة وحاول مرة أخرى.');
+                }
+            },
+
+            displayPrayerTimes(timings) {
+                const prayerNames = {
+                    'Fajr': { ar: 'الفجر', icon: 'fa-sun' },
+                    'Dhuhr': { ar: 'الظهر', icon: 'fa-sun' }, 
+                    'Asr': { ar: 'العصر', icon: 'fa-sun' },
+                    'Maghrib': { ar: 'المغرب', icon: 'fa-moon' },
+                    'Isha': { ar: 'العشاء', icon: 'fa-moon' }
+                };
+
+                const now = new Date();
+                const currentTime = now.getHours() * 60 + now.getMinutes();
+                let nextPrayer = null;
+                let minDiff = Infinity;
+
+                let html = '';
+                Object.keys(prayerNames).forEach(prayer => {
+                    const time = timings[prayer];
+                    const [hours, minutes] = time.split(':').map(Number);
+                    const prayerTime = hours * 60 + minutes;
+                    
+                    let timeDiff = prayerTime - currentTime;
+                    if (timeDiff < 0) timeDiff += 24 * 60; // Next day
+                    
+                    if (timeDiff < minDiff) {
+                        minDiff = timeDiff;
+                        nextPrayer = prayer;
+                    }
+
+                    const isNext = prayer === nextPrayer;
+                    const cardClass = isNext ? 'prayer-card next-prayer' : 'prayer-card';
+
+                    html += \`
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                            <div class="\${cardClass}">
+                                <div class="prayer-icon">
+                                    <i class="fas \${prayerNames[prayer].icon}"></i>
+                                </div>
+                                <h5 class="prayer-name">\${prayerNames[prayer].ar}</h5>
+                                <div class="prayer-time">\${time}</div>
+                                \${isNext ? '<div class="next-indicator">القادمة</div>' : ''}
+                            </div>
+                        </div>
+                    \`;
+                });
+
+                document.getElementById('prayer-times').innerHTML = html;
+                document.getElementById('prayer-times-loading').classList.add('d-none');
+                document.getElementById('prayer-times-container').classList.remove('d-none');
+                document.getElementById('prayer-error').classList.add('d-none');
+            },
+
+            showManualLocationForm() {
+                document.getElementById('manual-location-form').style.display = 'block';
+            },
+
+            hideManualLocationForm() {
+                document.getElementById('manual-location-form').style.display = 'none';
+                document.getElementById('manual-city').value = '';
+            },
+
+            showError(message) {
+                document.getElementById('error-text').textContent = message;
+                document.getElementById('prayer-error').classList.remove('d-none');
+                document.getElementById('prayer-times-loading').classList.add('d-none');
+            },
+
+            displayCurrentDate() {
+                const today = new Date();
+                
+                // Gregorian date in Arabic
+                const gregorianDate = today.toLocaleDateString('ar-EG', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                
+                // Get proper Hijri date using improved calculation
+                const hijriDate = this.getHijriDate(today);
+                
+                // Display both dates correctly
+                document.getElementById('gregorian-date').textContent = gregorianDate;
+                document.getElementById('hijri-date').textContent = hijriDate;
+            },
+
+            getHijriDate(date) {
+                // Improved Hijri date calculation
+                // Islamic calendar epoch: July 16, 622 CE (1 Muharram 1 AH)
+                const islamicEpoch = new Date(622, 6, 16);
+                const diffTime = date.getTime() - islamicEpoch.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                // More accurate Islamic year calculation (354.367 days per year)
+                const daysPerYear = 354.367;
+                const hijriYear = Math.floor(diffDays / daysPerYear) + 1;
+                const dayOfYear = Math.floor(diffDays % daysPerYear);
+                
+                const hijriMonths = [
+                    'محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية',
+                    'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'
+                ];
+                
+                // Calculate month and day (alternating 30/29 days per month)
+                let remainingDays = dayOfYear;
+                let monthIndex = 0;
+                const monthLengths = [30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29]; // Basic pattern
+                
+                for (let i = 0; i < 12; i++) {
+                    if (remainingDays < monthLengths[i]) {
+                        monthIndex = i;
+                        break;
+                    }
+                    remainingDays -= monthLengths[i];
+                }
+                
+                const dayOfMonth = remainingDays + 1;
+                
+                return \`\${Math.floor(dayOfMonth)} \${hijriMonths[monthIndex]} \${hijriYear}\`;
+            }
+        };
         
-        function showPrayerError(message) {
-            document.getElementById('prayer-times-loading').innerHTML = \`
-                <div style="color: #dc3545;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>\${message}</p>
-                </div>
-            \`;
+        // Initialize Prayer Times
+        function initializePrayerTimes() {
+            prayerTimesHandler.displayCurrentDate();
+            prayerTimesHandler.getUserLocation();
         }
         
         // Qibla Compass Class
