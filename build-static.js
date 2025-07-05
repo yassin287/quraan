@@ -92,9 +92,6 @@ const createFullHTML = () => {
                         <a class="nav-link" href="#" onclick="showSearch()">البحث</a>
                     </li>
                     <li class="nav-item me-3">
-                        <a class="nav-link" href="#" onclick="showQibla()">اتجاه القبلة</a>
-                    </li>
-                    <li class="nav-item me-3">
                         <a class="nav-link" href="#" onclick="showPrayerTimes()">أوقات الصلاة</a>
                     </li>
                     <li class="nav-item me-3">
