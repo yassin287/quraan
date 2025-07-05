@@ -134,12 +134,29 @@
 </div>
 
 <script>
-class QiblaCompass {
+class AdvancedQiblaCompass {
 	constructor() {
 		this.userLocation = null;
 		this.qiblaDirection = null;
 		this.deviceHeading = 0;
-		this.meccaCoords = { lat: 21.4225, lng: 39.8262 };
+		this.magneticDeclination = 0;
+		this.isCalibrating = false;
+		this.smoothingFactor = 0.15;
+		this.headingHistory = [];
+		this.maxHistorySize = 10;
+		
+		// Kaaba coordinates (most precise)
+		this.meccaCoords = { 
+			lat: 21.422487, 
+			lng: 39.826206 
+		};
+		
+		// Sensor fusion parameters
+		this.alpha = 0;
+		this.beta = 0;
+		this.gamma = 0;
+		this.accelerometer = { x: 0, y: 0, z: 0 };
+		this.magnetometer = { x: 0, y: 0, z: 0 };
 		
 		this.init();
 	}
@@ -191,9 +208,21 @@ class QiblaCompass {
 
 	updateLocationDisplay() {
 		const coords = document.getElementById('coordinates');
+		const accuracy = this.userLocation.accuracy || 0;
+		let accuracyText = '';
+		
+		if (accuracy <= 10) {
+			accuracyText = '<span class="text-success">دقة عالية</span>';
+		} else if (accuracy <= 50) {
+			accuracyText = '<span class="text-warning">دقة متوسطة</span>';
+		} else {
+			accuracyText = '<span class="text-danger">دقة منخفضة</span>';
+		}
+
 		coords.innerHTML = `
 			<i class="fas fa-map-marker-alt text-success"></i>
-			${this.userLocation.lat.toFixed(4)}°, ${this.userLocation.lng.toFixed(4)}°
+			${this.userLocation.lat.toFixed(6)}°, ${this.userLocation.lng.toFixed(6)}°
+			<br><small>${accuracyText} (±${Math.round(accuracy)}م)</small>
 		`;
 	}
 
@@ -235,7 +264,17 @@ class QiblaCompass {
 		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 		const distance = R * c;
 
-		document.getElementById('distance-to-mecca').textContent = Math.round(distance) + ' كم';
+		document.getElementById('distance-to-mecca').textContent = this.formatDistance(distance);
+	}
+
+	formatDistance(km) {
+		if (km < 1) {
+			return `${Math.round(km * 1000)} متر`;
+		} else if (km < 100) {
+			return `${km.toFixed(1)} كم`;
+		} else {
+			return `${Math.round(km).toLocaleString()} كم`;
+		}
 	}
 
 	startCompass() {
@@ -335,30 +374,38 @@ class QiblaCompass {
 		
 		if (!indicator || !statusBox) return;
 		
-		// Calculate the difference between device heading and qibla direction
 		let diff = Math.abs(this.deviceHeading - this.qiblaDirection);
 		if (diff > 180) {
 			diff = 360 - diff;
 		}
 		
-		// Update indicator based on accuracy
-		if (diff <= 5) {
-			indicator.textContent = 'دقيق جداً ✓';
-			indicator.className = 'info-value accurate';
-			statusBox.className = 'qibla-info-box p-3 accurate-box';
+		let status, className, boxClassName;
+		
+		if (diff <= 3) {
+			status = 'مثالي ✓✓';
+			className = 'info-value perfect';
+			boxClassName = 'qibla-info-box p-3 perfect-box';
+		} else if (diff <= 8) {
+			status = 'دقيق جداً ✓';
+			className = 'info-value accurate';
+			boxClassName = 'qibla-info-box p-3 accurate-box';
 		} else if (diff <= 15) {
-			indicator.textContent = 'دقيق';
-			indicator.className = 'info-value good';
-			statusBox.className = 'qibla-info-box p-3 good-box';
+			status = 'دقيق';
+			className = 'info-value good';
+			boxClassName = 'qibla-info-box p-3 good-box';
 		} else if (diff <= 30) {
-			indicator.textContent = 'قريب';
-			indicator.className = 'info-value close';
-			statusBox.className = 'qibla-info-box p-3 close-box';
+			status = 'قريب';
+			className = 'info-value close';
+			boxClassName = 'qibla-info-box p-3 close-box';
 		} else {
-			indicator.textContent = 'بعيد';
-			indicator.className = 'info-value far';
-			statusBox.className = 'qibla-info-box p-3 far-box';
+			status = 'بعيد';
+			className = 'info-value far';
+			boxClassName = 'qibla-info-box p-3 far-box';
 		}
+		
+		indicator.textContent = status;
+		indicator.className = className;
+		statusBox.className = boxClassName;
 	}
 
 	calibrateCompass() {
@@ -385,7 +432,7 @@ class QiblaCompass {
 
 // Initialize the Qibla compass when page loads
 document.addEventListener('DOMContentLoaded', () => {
-	new QiblaCompass();
+	new AdvancedQiblaCompass();
 });
 </script>
 
@@ -766,5 +813,17 @@ document.addEventListener('DOMContentLoaded', () => {
 .far-box {
 	border-color: #dc3545 !important;
 	box-shadow: 0 0 15px rgba(220, 53, 69, 0.3) !important;
+}
+
+.perfect {
+	color: #00ff00 !important;
+	font-weight: bold;
+	text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.perfect-box {
+	border-color: #00ff00 !important;
+	box-shadow: 0 0 20px rgba(0, 255, 0, 0.4) !important;
+	background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%);
 }
 </style>
