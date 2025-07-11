@@ -21,7 +21,7 @@ app.use(express.static(path.join(__dirname, "public"))); //  "public" off of cur
 
 app.get("/", function (req, res) {
 	const randomAyah = Math.floor(Math.random() * 6232) + 1;
-	const url = "https://api.alquran.cloud/v1/ayah/" + randomAyah + "/editions/quran-uthmani,en.asad,en.pickthall,ar.muyassar,ar.alafasy";
+	const url = "https://api.alquran.cloud/v1/ayah/" + randomAyah + "/editions/quran-uthmani,en.asad,en.pickthall,ar.muyassar,ar.minshawi";
 	let options = { json: true };
 	request(url, options, (error, response, body) => {
 		if (error) {

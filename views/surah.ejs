@@ -40,7 +40,7 @@
 	<main class="container-fluid d-flex justify-content-center align-items-center mb-5">
 		<div class="container ayah-container d-flex justify-content-center flex-column">
 			<div class="top-container d-flex justify-content-space-between align-items-center">
-				<p class="fs-3">القارئ الشيخ: مشاري راشد العفاسي</p>
+				<p class="fs-3">القارئ الشيخ: محمد صديق المنشاوي</p>
 				<div class="btns d-flex">
 					<i id="pause" class="fa-solid fa-pause" onclick="pause()"></i>
 					<i id="player" class="fa-solid fa-play" onclick="play()"></i>
@@ -84,7 +84,7 @@
 	}
 	let audio = document.getElementById("audio");
 	var audioArray = <%-JSON.stringify(audioArray) %>;
-	audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+	audio.src = "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3";
 	var index = 0;
 	// audio.play();
 	var allayat = document.querySelectorAll(".ayat");
@@ -101,7 +101,7 @@
 		var clicked_id = ele
 		var clicked_idNum = Number(ele.replace('ayah-', '').trim());
 		if(clicked_idNum===0){
-			audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+			audio.src = "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3";
 		}else{
 			audio.src = audioArray[clicked_idNum-1];
 		}
@@ -114,7 +114,7 @@
 		activeAyah = document.getElementById("ayah-"+index);
 		activeAyah.classList.remove("active");
 		if (index < audioArray.length) {
-			if (audioArray[index] === "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3") {
+			if (audioArray[index] === "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3") {
 				index++;
 			}
 			audio.src = audioArray[index];
@@ -138,7 +138,7 @@
 			playBtn.classList.remove("fa-stop");
 			playBtn.classList.add("fa-play");
 			audio.pause();
-			audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+			audio.src = "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3";
 			index = 0;
 			audio.currentTime = 0;
 			allayat.forEach(ayah => {

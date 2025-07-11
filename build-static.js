@@ -204,7 +204,7 @@ const createFullHTML = () => {
             document.getElementById('mainContent').innerHTML = content;
             
             try {
-                const response = await fetch(\`\${API_BASE}/ayah/\${randomAyah}/editions/quran-uthmani,en.asad,ar.muyassar,ar.alafasy\`);
+                const response = await fetch(\`\${API_BASE}/ayah/\${randomAyah}/editions/quran-uthmani,en.asad,ar.muyassar,ar.minshawi\`);
                 const data = await response.json();
                 
                 const ayahText = data.data[0].text;
@@ -480,7 +480,7 @@ const createFullHTML = () => {
             document.getElementById('mainContent').innerHTML = content;
             
             try {
-                const response = await fetch(\`\${API_BASE}/surah/\${surahNumber}/editions/quran-uthmani,ar.muyassar,ar.alafasy\`);
+                const response = await fetch(\`\${API_BASE}/surah/\${surahNumber}/editions/quran-uthmani,ar.muyassar,ar.minshawi\`);
                 const data = await response.json();
                 
                 const surahData = data.data[0];
@@ -519,7 +519,7 @@ const createFullHTML = () => {
                         </div>
                         
                         <div class="top-container d-flex justify-content-between align-items-center mb-4">
-                            <p class="fs-3">القارئ الشيخ: مشاري راشد العفاسي</p>
+                            <p class="fs-3">القارئ الشيخ: محمد صديق المنشاوي</p>
                             <div class="btns d-flex">
                                 <i id="pause" class="fa-solid fa-pause" onclick="pauseAudio()"></i>
                                 <i id="player" class="fa-solid fa-play" onclick="playAudio()"></i>
@@ -595,7 +595,7 @@ const createFullHTML = () => {
             window.currentSurahNumber = surahNumber;
             
             const audio = document.getElementById('surahAudio');
-            audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+            audio.src = "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3";
             
             audio.onended = function() {
                 // Remove active class from current ayah
@@ -635,7 +635,7 @@ const createFullHTML = () => {
             const audio = document.getElementById('surahAudio');
             window.currentAudioIndex = -1;
             window.isPlaying = true;
-            audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+            audio.src = "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3";
             audio.play();
             
             document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
@@ -685,7 +685,7 @@ const createFullHTML = () => {
                 } else {
                     // Other surahs - start with Bismillah
                     window.currentAudioIndex = -1;
-                    audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+                    audio.src = "https://cdn.islamic.network/quran/audio/128/ar.minshawi/1.mp3";
                     audio.play();
                     const bismillah = document.getElementById('ayah-0');
                     if (bismillah) bismillah.classList.add('active');
