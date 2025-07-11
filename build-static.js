@@ -94,11 +94,6 @@ const createFullHTML = () => {
                     <li class="nav-item me-3">
                         <a class="nav-link" href="#" onclick="showPrayerTimes()">أوقات الصلاة</a>
                     </li>
-                    <li class="nav-item me-3">
-                        <a class="nav-link" href="https://github.com/yassin287/quraan" target="_blank">
-                            <i class="fab fa-github"></i> GitHub
-                        </a>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -112,7 +107,7 @@ const createFullHTML = () => {
     <!-- Footer -->
     <footer class="py-3 mt-5">
         <div class="container text-center">
-            <p>&copy; Yassin Moustafa 2025 - <a href="https://github.com/yassin287" target="_blank" class="github-link">GitHub</a></p>
+            <p>&copy; Yassin Moustafa 2025</p>
             <p style="color: #b8860b; font-family: 'Quranic'; font-size: 1.1rem; margin-top: 15px;">
                 "وَنُنَزِّلُ مِنَ الْقُرْآنِ مَا هُوَ شِفَاءٌ وَرَحْمَةٌ لِّلْمُؤْمِنِينَ"
             </p>
@@ -510,6 +505,9 @@ const createFullHTML = () => {
         
         // Render surah content
         function renderSurahContent(surahData, tafsirData, audioData) {
+            // Check if surah is Al-Fatiha (1) or At-Tawbah (9) - different Bismillah handling
+            const showBismillah = surahData.number !== 9; // At-Tawbah doesn't have Bismillah
+            
             const content = \`
             <div class="container my-5">
                 <main class="container-fluid d-flex justify-content-center align-items-center mb-5">
@@ -530,12 +528,14 @@ const createFullHTML = () => {
                         
                         <audio id="surahAudio" class="d-none" controls></audio>
                         
+                        \${showBismillah ? \`
                         <p class="fs-1 text-center ayat mb-4" onclick="playBasmala()" id="ayah-0">
                             بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
                         </p>
+                        \` : ''}
                         
                         <div class="ayah-content fs-1" style="line-height: 2.5;">
-                            \${renderAyahs(surahData.ayahs, audioData.ayahs)}
+                            \${renderAyahs(surahData.ayahs, audioData.ayahs, surahData.number)}
                         </div>
                         
                         <div class="ayah-prop fs-4 text-center mt-4">
@@ -556,13 +556,19 @@ const createFullHTML = () => {
             \`;
             
             document.getElementById('mainContent').innerHTML = content;
-            initializeSurahAudio(audioData.ayahs);
+            initializeSurahAudio(audioData.ayahs, surahData.number);
         }
         
         // Render ayahs
-        function renderAyahs(ayahs, audioAyahs) {
+        function renderAyahs(ayahs, audioAyahs, surahNumber) {
             return ayahs.map((ayah, index) => {
-                const ayahText = index === 0 ? ayah.text.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', '') : ayah.text;
+                let ayahText = ayah.text;
+                
+                // Remove Bismillah from the first ayah if it's not Al-Fatiha or At-Tawbah
+                if (index === 0 && surahNumber !== 1 && surahNumber !== 9) {
+                    ayahText = ayahText.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', '').trim();
+                }
+                
                 const audioUrl = audioAyahs[index]?.audio || '';
                 
                 return \`
@@ -582,70 +588,122 @@ const createFullHTML = () => {
         }
         
         // Initialize surah audio functionality
-        function initializeSurahAudio(audioAyahs) {
+        function initializeSurahAudio(audioAyahs, surahNumber) {
             window.currentAudioArray = audioAyahs.map(ayah => ayah.audio);
-            window.currentAudioIndex = 0;
+            window.currentAudioIndex = -1; // Start before first ayah
+            window.isPlaying = false;
+            window.currentSurahNumber = surahNumber;
             
             const audio = document.getElementById('surahAudio');
             audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
             
             audio.onended = function() {
-                const currentAyah = document.getElementById(\`ayah-\${window.currentAudioIndex}\`);
-                if (currentAyah) currentAyah.classList.remove('active');
+                // Remove active class from current ayah
+                if (window.currentAudioIndex === -1) {
+                    const bismillah = document.getElementById('ayah-0');
+                    if (bismillah) bismillah.classList.remove('active');
+                } else {
+                    const currentAyah = document.getElementById(\`ayah-\${window.currentAudioIndex + 1}\`);
+                    if (currentAyah) currentAyah.classList.remove('active');
+                }
                 
+                // Move to next ayah
+                window.currentAudioIndex++;
+                
+                // Check if there are more ayahs to play
                 if (window.currentAudioIndex < window.currentAudioArray.length) {
-                    if (window.currentAudioArray[window.currentAudioIndex] !== "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3") {
-                        window.currentAudioIndex++;
-                    }
-                    if (window.currentAudioIndex < window.currentAudioArray.length) {
-                        audio.src = window.currentAudioArray[window.currentAudioIndex];
-                        audio.play();
-                        window.currentAudioIndex++;
-                        
-                        const nextAyah = document.getElementById(\`ayah-\${window.currentAudioIndex}\`);
-                        if (nextAyah) nextAyah.classList.add('active');
-                    }
+                    audio.src = window.currentAudioArray[window.currentAudioIndex];
+                    audio.play();
+                    
+                    // Highlight next ayah
+                    const nextAyah = document.getElementById(\`ayah-\${window.currentAudioIndex + 1}\`);
+                    if (nextAyah) nextAyah.classList.add('active');
+                } else {
+                    // End of surah reached
+                    window.isPlaying = false;
+                    const playBtn = document.getElementById('player');
+                    playBtn.classList.remove('fa-stop');
+                    playBtn.classList.add('fa-play');
                 }
             };
         }
         
         // Audio control functions
         function playBasmala() {
+            if (window.currentSurahNumber === 9) return; // At-Tawbah has no Bismillah
+            
             const audio = document.getElementById('surahAudio');
+            window.currentAudioIndex = -1;
+            window.isPlaying = true;
             audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
             audio.play();
             
             document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
             document.getElementById('ayah-0').classList.add('active');
+            
+            const playBtn = document.getElementById('player');
+            playBtn.classList.remove('fa-play');
+            playBtn.classList.add('fa-stop');
         }
         
         function playAyahInSurah(audioUrl, element) {
             const audio = document.getElementById('surahAudio');
+            const ayahId = element.id;
+            const ayahNumber = parseInt(ayahId.replace('ayah-', ''));
+            
+            window.currentAudioIndex = ayahNumber - 2; // Adjust for array indexing
+            window.isPlaying = true;
             audio.src = audioUrl;
             audio.play();
             
             document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
+            document.getElementById('ayah-0').classList.remove('active');
             element.classList.add('active');
+            
+            const playBtn = document.getElementById('player');
+            playBtn.classList.remove('fa-play');
+            playBtn.classList.add('fa-stop');
         }
         
         function playAudio() {
             const audio = document.getElementById('surahAudio');
             const playBtn = document.getElementById('player');
-            const pauseBtn = document.getElementById('pause');
             
-            if (audio.currentTime === 0) {
-                audio.play();
-                document.getElementById('ayah-0').classList.add('active');
+            if (!window.isPlaying) {
+                // Start playing
+                window.isPlaying = true;
+                
+                // Check if this surah has Bismillah (all except At-Tawbah)
+                if (window.currentSurahNumber === 9) {
+                    // At-Tawbah - start directly with first ayah
+                    window.currentAudioIndex = -1;
+                    audio.src = window.currentAudioArray[0];
+                    audio.play();
+                    window.currentAudioIndex = 0;
+                    const firstAyah = document.getElementById('ayah-1');
+                    if (firstAyah) firstAyah.classList.add('active');
+                } else {
+                    // Other surahs - start with Bismillah
+                    window.currentAudioIndex = -1;
+                    audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
+                    audio.play();
+                    const bismillah = document.getElementById('ayah-0');
+                    if (bismillah) bismillah.classList.add('active');
+                }
+                
                 playBtn.classList.remove('fa-play');
                 playBtn.classList.add('fa-stop');
             } else {
+                // Stop playing and reset
+                window.isPlaying = false;
                 playBtn.classList.remove('fa-stop');
                 playBtn.classList.add('fa-play');
                 audio.pause();
-                audio.src = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3";
-                window.currentAudioIndex = 0;
                 audio.currentTime = 0;
+                window.currentAudioIndex = -1;
                 document.querySelectorAll('.ayat').forEach(ayah => ayah.classList.remove('active'));
+                const bismillah = document.getElementById('ayah-0');
+                if (bismillah) bismillah.classList.remove('active');
             }
         }
         
@@ -653,7 +711,7 @@ const createFullHTML = () => {
             const audio = document.getElementById('surahAudio');
             const pauseBtn = document.getElementById('pause');
             
-            if (audio.currentTime === 0) return;
+            if (!window.isPlaying) return;
             
             if (audio.paused) {
                 audio.play();
