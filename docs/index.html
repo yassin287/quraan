@@ -185,7 +185,6 @@
         // Recite Page SPA handler (placeholder, to be implemented as needed)
         async function showRecitePage(surahNumber) {
             updateActiveNav('التلاوة التفاعلية');
-            // Loading spinner
             document.getElementById('mainContent').innerHTML = `
                 <div class="container my-5">
                     <div class="loading text-center">
@@ -201,8 +200,169 @@
                 const tafsirData = data.data[1];
                 const audioData = data.data[2];
 
-                // Render recite page UI
+                // --- QuranReciter class and helpers (ported from recite-page.ejs) ---
+                class QuranReciter {
+                    constructor(ayahs, tafsirAyahs, audioAyahs) {
+                        this.ayahs = ayahs;
+                        this.tafsirAyahs = tafsirAyahs;
+                        this.audioAyahs = audioAyahs;
+                        this.currentAyahIdx = 0;
+                        this.currentWordIdx = 0;
+                        this.isReciting = false;
+                        this.speechRecognition = null;
+                        this.isListening = false;
+                        this.init();
+                    }
+                    init() {
+                        this.renderAyah();
+                        this.attachEvents();
+                    }
+                    renderAyah() {
+                        const ayah = this.ayahs[this.currentAyahIdx];
+                        const words = ayah.text.trim().split(/\s+/);
+                        let html = '';
+                        for (let i = 0; i < words.length; i++) {
+                            html += `<span class="ayah-word" data-idx="${i}" style="opacity:${i <= this.currentWordIdx ? 1 : 0.2}; transition:opacity 0.2s;">${words[i]}</span> `;
+                        }
+                        document.getElementById('ayah-text').innerHTML = html;
+                        document.getElementById('ayah-badge').textContent = ayah.numberInSurah;
+                        document.getElementById('current-ayah-number').textContent = ayah.numberInSurah;
+                        // Progress bar
+                        const percent = Math.round(((this.currentAyahIdx+1)/this.ayahs.length)*100);
+                        document.getElementById('progress-bar').style.width = percent + '%';
+                        document.getElementById('progress-bar').setAttribute('aria-valuenow', percent);
+                    }
+                    playAudio() {
+                        const audio = document.getElementById('recite-audio');
+                        audio.src = this.audioAyahs[this.currentAyahIdx]?.audio || '';
+                        audio.classList.remove('d-none');
+                        audio.play();
+                    }
+                    showTafsir() {
+                        document.getElementById('recite-tafsir').innerHTML = this.tafsirAyahs[this.currentAyahIdx]?.text || '';
+                        document.getElementById('recite-tafsir-container').style.display = 'block';
+                    }
+                    hideTafsir() {
+                        document.getElementById('recite-tafsir-container').style.display = 'none';
+                    }
+                    startRecite() {
+                        if (this.isListening) return;
+                        this.isListening = true;
+                        document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">ابدأ التلاوة، سيتم كشف الكلمات تدريجياً</span>';
+                        this.startSpeechRecognition();
+                    }
+                    skipAyah() {
+                        if (this.currentAyahIdx < this.ayahs.length - 1) {
+                            this.currentAyahIdx++;
+                            this.currentWordIdx = 0;
+                            this.renderAyah();
+                            document.getElementById('recite-status').innerHTML = '';
+                            this.isListening = false;
+                            document.getElementById('recite-audio').classList.add('d-none');
+                            this.hideTafsir();
+                        }
+                    }
+                    onAudioEnded() {
+                        if (this.currentAyahIdx < this.ayahs.length - 1) {
+                            this.currentAyahIdx++;
+                            this.currentWordIdx = 0;
+                            this.renderAyah();
+                            this.isListening = false;
+                            document.getElementById('recite-status').innerHTML = '<span style="color:#b8860b">تم الاستماع، يمكنك التلاوة أو الانتقال للآية التالية</span>';
+                            document.getElementById('recite-audio').classList.add('d-none');
+                            this.hideTafsir();
+                        } else {
+                            document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">انتهت السورة! أحسنت</span>';
+                        }
+                    }
+                    startSpeechRecognition() {
+                        if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                            document.getElementById('recite-status').innerHTML = '<span style="color:red">المتصفح لا يدعم التعرف على الصوت</span>';
+                            return;
+                        }
+                        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                        this.speechRecognition = new SpeechRecognition();
+                        this.speechRecognition.lang = 'ar-SA';
+                        this.speechRecognition.continuous = false;
+                        this.speechRecognition.interimResults = false;
+                        this.speechRecognition.onresult = (event) => {
+                            const transcript = event.results[0][0].transcript.trim();
+                            this.handleSpeechResult(transcript);
+                        };
+                        this.speechRecognition.onerror = (event) => {
+                            document.getElementById('recite-status').innerHTML = '<span style="color:red">حدث خطأ في التعرف على الصوت. حاول مرة أخرى.</span>';
+                            this.isListening = false;
+                        };
+                        this.speechRecognition.onend = () => {
+                            this.isListening = false;
+                        };
+                        this.speechRecognition.start();
+                    }
+                    handleSpeechResult(transcript) {
+                        const ayah = this.ayahs[this.currentAyahIdx];
+                        const words = ayah.text.trim().split(/\s+/);
+                        let matched = 0;
+                        for (let i = 0; i < words.length; i++) {
+                            if (transcript.includes(words[i])) {
+                                matched = i + 1;
+                            }
+                        }
+                        if (matched > this.currentWordIdx) {
+                            this.currentWordIdx = matched;
+                            this.renderAyah();
+                        }
+                        if (this.currentWordIdx >= words.length) {
+                            document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">تمت التلاوة بنجاح! انتقل للآية التالية أو استمع مرة أخرى.</span>';
+                        } else {
+                            document.getElementById('recite-status').innerHTML = '<span style="color:#b8860b">تابع التلاوة...</span>';
+                        }
+                    }
+                    attachEvents() {
+                        document.getElementById('start-recite-btn').onclick = () => this.startRecite();
+                        document.getElementById('stop-recite-btn').onclick = () => this.stopRecite();
+                        document.getElementById('skip-btn').onclick = () => this.skipAyah();
+                        document.getElementById('multi-recite-btn').onclick = () => this.multiRecite();
+                        document.getElementById('recite-audio').onended = () => this.onAudioEnded();
+                        document.getElementById('show-tafsir-btn').onclick = () => this.showTafsir();
+                        document.getElementById('hide-tafsir-btn').onclick = () => this.hideTafsir();
+                    }
+
+                    stopRecite() {
+                        if (this.speechRecognition && this.isListening) {
+                            this.speechRecognition.abort();
+                        }
+                        this.isListening = false;
+                        document.getElementById('recite-status').innerHTML = '<span style="color:#b8860b">تم إيقاف التلاوة</span>';
+                    }
+
+                    multiRecite() {
+                        // Example: Recite 3 ayahs in a row (can be customized)
+                        let ayahsToRecite = 3;
+                        let self = this;
+                        function reciteNext() {
+                            if (ayahsToRecite > 0 && self.currentAyahIdx < self.ayahs.length) {
+                                self.startRecite();
+                                ayahsToRecite--;
+                                setTimeout(() => {
+                                    self.skipAyah();
+                                    reciteNext();
+                                }, 4000); // Wait 4s per ayah (adjust as needed)
+                            }
+                        }
+                        reciteNext();
+                    }
+                }
+
+                // --- Render recite page UI (pixel-perfect match) ---
                 const content = `
+                <style>
+                .ayah-word { font-family: 'Quranic'; font-size: 2.5rem; margin: 0 0.2em; transition: opacity 0.2s; }
+                .ayah-word[style*='opacity:1'] { color: #fff; text-shadow: 0 2px 8px #b8860b; }
+                .ayah-word[style*='opacity:0.2'] { color: #b8860b; }
+                .ayah-container { background: linear-gradient(135deg, #232323 0%, #181818 100%); border-radius: 18px; box-shadow: 0 4px 24px #b8860b33; padding: 30px 20px; }
+                #recite-status { font-size: 1.2rem; min-height: 32px; }
+                #recite-tafsir-container { background: #222; color: #fff; border-radius: 12px; padding: 20px; max-width: 700px; margin: 0 auto 20px auto; text-align: right; }
+                </style>
                 <div class="container-fluid vh-100 d-flex flex-column">
                     <div class="row py-3" style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border-bottom: 2px solid #b8860b;">
                         <div class="col-12 text-center">
@@ -234,17 +394,23 @@
                             <div class="ayah-container mb-4" style="min-height: 200px; max-width: 800px;">
                                 <div id="ayah-text" style="font-family: 'Quranic'; font-size: 2.5rem; line-height: 1.8; direction: rtl; color: #ffffff; margin-bottom: 20px;"></div>
                                 <div class="ayah-number">
-                                    <span style="background-color: #b8860b; color: #000000; padding: 8px 12px; border-radius: 50%; font-size: 1.1rem; font-weight: bold;" id="ayah-badge">1</span>
-                                </div>
+                                <span style="background-color: #b8860b; color: #000000; padding: 8px 12px; border-radius: 50%; font-size: 1.1rem; font-weight: bold;" id="ayah-badge">1</span>
                             </div>
-                            <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
-                                <button class="btn btn-lg btn-primary" id="start-recite-btn">
-                                    <i class="fas fa-microphone"></i> ابدأ التلاوة
-                                </button>
-                                <button class="btn btn-lg btn-secondary" id="skip-btn">
-                                    <i class="fas fa-forward"></i> تخطي
-                                </button>
-                            </div>
+                        </div>
+                        <div class="recite-controls d-flex flex-wrap justify-content-center align-items-center gap-2 mb-4">
+                            <button class="btn btn-success" id="start-recite-btn">
+                                <i class="fas fa-microphone"></i> ابدأ التلاوة
+                            </button>
+                            <button class="btn btn-danger" id="stop-recite-btn">
+                                <i class="fas fa-stop"></i> إيقاف
+                            </button>
+                            <button class="btn btn-secondary" id="skip-btn">
+                                <i class="fas fa-forward"></i> تخطي الآية
+                            </button>
+                            <button class="btn btn-warning" id="multi-recite-btn">
+                                <i class="fas fa-list-ol"></i> تلاوة متعددة
+                            </button>
+                        </div>
                             <div id="recite-status" class="mb-3" style="min-height: 32px;"></div>
                             <div class="mb-4">
                                 <audio id="recite-audio" controls class="d-none"></audio>
@@ -262,75 +428,8 @@
                 `;
                 document.getElementById('mainContent').innerHTML = content;
 
-                // Recitation logic
-                const ayahs = surahData.ayahs;
-                const tafsirAyahs = tafsirData.ayahs;
-                const audioAyahs = audioData.ayahs;
-                let currentAyahIdx = 0;
-                let isReciting = false;
-
-                function updateAyahDisplay() {
-                    const ayah = ayahs[currentAyahIdx];
-                    document.getElementById('ayah-text').innerHTML = ayah.text;
-                    document.getElementById('ayah-badge').textContent = ayah.numberInSurah;
-                    document.getElementById('current-ayah-number').textContent = ayah.numberInSurah;
-                    // Progress bar
-                    const percent = Math.round(((currentAyahIdx+1)/ayahs.length)*100);
-                    document.getElementById('progress-bar').style.width = percent + '%';
-                    document.getElementById('progress-bar').setAttribute('aria-valuenow', percent);
-                }
-
-                function playCurrentAyahAudio() {
-                    const audio = document.getElementById('recite-audio');
-                    audio.src = audioAyahs[currentAyahIdx]?.audio || '';
-                    audio.classList.remove('d-none');
-                    audio.play();
-                }
-
-                function showTafsir() {
-                    document.getElementById('recite-tafsir').innerHTML = tafsirAyahs[currentAyahIdx]?.text || '';
-                    document.getElementById('recite-tafsir-container').style.display = 'block';
-                }
-                function hideTafsir() {
-                    document.getElementById('recite-tafsir-container').style.display = 'none';
-                }
-
-                document.getElementById('show-tafsir-btn').onclick = showTafsir;
-                document.getElementById('hide-tafsir-btn').onclick = hideTafsir;
-
-                document.getElementById('start-recite-btn').onclick = function() {
-                    if (!isReciting) {
-                        isReciting = true;
-                        document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">ابدأ التلاوة أو استمع للآية</span>';
-                        playCurrentAyahAudio();
-                    }
-                };
-                document.getElementById('skip-btn').onclick = function() {
-                    if (currentAyahIdx < ayahs.length - 1) {
-                        currentAyahIdx++;
-                        updateAyahDisplay();
-                        document.getElementById('recite-status').innerHTML = '';
-                        isReciting = false;
-                        document.getElementById('recite-audio').classList.add('d-none');
-                        hideTafsir();
-                    }
-                };
-
-                // Audio ends: move to next ayah
-                document.getElementById('recite-audio').onended = function() {
-                    if (currentAyahIdx < ayahs.length - 1) {
-                        currentAyahIdx++;
-                        updateAyahDisplay();
-                        isReciting = false;
-                        document.getElementById('recite-status').innerHTML = '<span style="color:#b8860b">تم الاستماع، يمكنك التلاوة أو الانتقال للآية التالية</span>';
-                        document.getElementById('recite-audio').classList.add('d-none');
-                        hideTafsir();
-                    } else {
-                        document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">انتهت السورة! أحسنت</span>';
-                    }
-                };
-
-                updateAyahDisplay();
+                // --- Initialize QuranReciter ---
+                const reciter = new QuranReciter(surahData.ayahs, tafsirData.ayahs, audioData.ayahs);
             } catch (error) {
                 document.getElementById('mainContent').innerHTML = `<div class="container my-5"><div class="alert alert-danger text-center">حدث خطأ في تحميل السورة. يرجى المحاولة مرة أخرى.</div></div>`;
             }
