@@ -187,6 +187,39 @@ app.get("/prayer-times", (req, res) => {
 	res.render("prayer-times");
 });
 
+// New routes for recitation feature
+app.get("/recite", (req, res) => {
+	let options = { json: true };
+	request("http://api.alquran.cloud/v1/surah", options, (error, response, body) => {
+		if (error) {
+			return console.log(error);
+		}
+		if (!error && response.statusCode == 200) {
+			res.render("recite-select", {
+				surahs: body.data
+			});
+		}
+	});
+});
+
+app.get("/recite/:surahNumber", (req, res) => {
+	const surahNumber = req.params.surahNumber;
+	let url = `https://api.alquran.cloud/v1/surah/${surahNumber}/quran-uthmani`;
+	let options = { json: true };
+	request(url, options, (error, response, body) => {
+		if (error) {
+			return console.log(error);
+		}
+		if (!error && response.statusCode == 200) {
+			const surahData = body.data;
+			res.render("recite-page", {
+				surah: surahData,
+				ayahs: surahData.ayahs
+			});
+		}
+	});
+});
+
 app.listen(process.env.PORT || 3000, function () {
 	console.log("server is running ON Port 3000");
 });
