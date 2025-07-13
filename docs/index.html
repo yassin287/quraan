@@ -183,24 +183,157 @@
         }
 
         // Recite Page SPA handler (placeholder, to be implemented as needed)
-        function showRecitePage(surahNumber) {
+        async function showRecitePage(surahNumber) {
             updateActiveNav('التلاوة التفاعلية');
-            // You can implement the full interactive recitation page here, similar to recite-page.ejs
-            const surah = allSurahs.find(s => s.number === surahNumber);
-            const content = `
-            <div class="container my-5">
-                <div class="text-center mb-4">
-                    <button class="btn btn-outline-warning mb-3" onclick="showReciteSelect()">
-                        <i class="fas fa-arrow-right"></i> العودة لاختيار السورة
-                    </button>
-                    <h2 class="mb-0" style="font-family: 'Quranic'; color: #b8860b;">
-                        ${surah ? surah.name : ''}
-                    </h2>
+            // Loading spinner
+            document.getElementById('mainContent').innerHTML = `
+                <div class="container my-5">
+                    <div class="loading text-center">
+                        <i class="fas fa-spinner fa-spin fa-2x" style="color: #b8860b;"></i>
+                        <p style="color: #b8860b; margin-top: 15px;">جاري تحميل السورة...</p>
+                    </div>
                 </div>
-                <div class="alert alert-info text-center">صفحة التلاوة التفاعلية قيد التطوير (يرجى استكمال المنطق حسب الحاجة)</div>
-            </div>
             `;
-            document.getElementById('mainContent').innerHTML = content;
+            try {
+                const response = await fetch(`${API_BASE}/surah/${surahNumber}/editions/quran-uthmani,ar.muyassar,ar.minshawi`);
+                const data = await response.json();
+                const surahData = data.data[0];
+                const tafsirData = data.data[1];
+                const audioData = data.data[2];
+
+                // Render recite page UI
+                const content = `
+                <div class="container-fluid vh-100 d-flex flex-column">
+                    <div class="row py-3" style="background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); border-bottom: 2px solid #b8860b;">
+                        <div class="col-12 text-center">
+                            <button class="btn btn-outline-warning mb-3 float-start" onclick="showReciteSelect()">
+                                <i class="fas fa-arrow-right"></i> العودة لاختيار السورة
+                            </button>
+                            <h2 class="mb-0" style="font-family: 'Quranic'; color: #b8860b;">
+                                ${surahData.name} <small style="color: rgba(255,255,255,0.7);">(${surahData.englishName})</small>
+                            </h2>
+                            <p class="mb-0" style="color: rgba(255,255,255,0.8);">
+                                آية <span id="current-ayah-number">1</span> من ${surahData.numberOfAyahs}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row flex-grow-1">
+                        <div class="col-12 d-flex flex-column justify-content-center align-items-center text-center p-4">
+                            <div class="w-100 mb-4" style="max-width: 600px;">
+                                <div class="progress mb-2" style="height: 8px; background-color: #1a1a1a; border: 1px solid #b8860b; border-radius: 10px;">
+                                    <div class="progress-bar" role="progressbar" 
+                                         style="width: 0%; background: linear-gradient(90deg, #b8860b 0%, #d4af37 100%); border-radius: 8px;" 
+                                         aria-valuenow="0" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"
+                                         id="progress-bar">
+                                    </div>
+                                </div>
+                                <small style="color: #b8860b; font-family: 'Quranic';">التقدم في السورة</small>
+                            </div>
+                            <div class="ayah-container mb-4" style="min-height: 200px; max-width: 800px;">
+                                <div id="ayah-text" style="font-family: 'Quranic'; font-size: 2.5rem; line-height: 1.8; direction: rtl; color: #ffffff; margin-bottom: 20px;"></div>
+                                <div class="ayah-number">
+                                    <span style="background-color: #b8860b; color: #000000; padding: 8px 12px; border-radius: 50%; font-size: 1.1rem; font-weight: bold;" id="ayah-badge">1</span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
+                                <button class="btn btn-lg btn-primary" id="start-recite-btn">
+                                    <i class="fas fa-microphone"></i> ابدأ التلاوة
+                                </button>
+                                <button class="btn btn-lg btn-secondary" id="skip-btn">
+                                    <i class="fas fa-forward"></i> تخطي
+                                </button>
+                            </div>
+                            <div id="recite-status" class="mb-3" style="min-height: 32px;"></div>
+                            <div class="mb-4">
+                                <audio id="recite-audio" controls class="d-none"></audio>
+                            </div>
+                            <div class="mb-4">
+                                <button class="btn btn-info" id="show-tafsir-btn">عرض التفسير</button>
+                            </div>
+                            <div class="tafsir-container" id="recite-tafsir-container" style="display:none; background: #222; color: #fff; border-radius: 12px; padding: 20px; max-width: 700px; margin: 0 auto 20px auto; text-align: right;">
+                                <div id="recite-tafsir"></div>
+                                <button class="btn btn-sm btn-warning mt-3" id="hide-tafsir-btn">إخفاء التفسير</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+                document.getElementById('mainContent').innerHTML = content;
+
+                // Recitation logic
+                const ayahs = surahData.ayahs;
+                const tafsirAyahs = tafsirData.ayahs;
+                const audioAyahs = audioData.ayahs;
+                let currentAyahIdx = 0;
+                let isReciting = false;
+
+                function updateAyahDisplay() {
+                    const ayah = ayahs[currentAyahIdx];
+                    document.getElementById('ayah-text').innerHTML = ayah.text;
+                    document.getElementById('ayah-badge').textContent = ayah.numberInSurah;
+                    document.getElementById('current-ayah-number').textContent = ayah.numberInSurah;
+                    // Progress bar
+                    const percent = Math.round(((currentAyahIdx+1)/ayahs.length)*100);
+                    document.getElementById('progress-bar').style.width = percent + '%';
+                    document.getElementById('progress-bar').setAttribute('aria-valuenow', percent);
+                }
+
+                function playCurrentAyahAudio() {
+                    const audio = document.getElementById('recite-audio');
+                    audio.src = audioAyahs[currentAyahIdx]?.audio || '';
+                    audio.classList.remove('d-none');
+                    audio.play();
+                }
+
+                function showTafsir() {
+                    document.getElementById('recite-tafsir').innerHTML = tafsirAyahs[currentAyahIdx]?.text || '';
+                    document.getElementById('recite-tafsir-container').style.display = 'block';
+                }
+                function hideTafsir() {
+                    document.getElementById('recite-tafsir-container').style.display = 'none';
+                }
+
+                document.getElementById('show-tafsir-btn').onclick = showTafsir;
+                document.getElementById('hide-tafsir-btn').onclick = hideTafsir;
+
+                document.getElementById('start-recite-btn').onclick = function() {
+                    if (!isReciting) {
+                        isReciting = true;
+                        document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">ابدأ التلاوة أو استمع للآية</span>';
+                        playCurrentAyahAudio();
+                    }
+                };
+                document.getElementById('skip-btn').onclick = function() {
+                    if (currentAyahIdx < ayahs.length - 1) {
+                        currentAyahIdx++;
+                        updateAyahDisplay();
+                        document.getElementById('recite-status').innerHTML = '';
+                        isReciting = false;
+                        document.getElementById('recite-audio').classList.add('d-none');
+                        hideTafsir();
+                    }
+                };
+
+                // Audio ends: move to next ayah
+                document.getElementById('recite-audio').onended = function() {
+                    if (currentAyahIdx < ayahs.length - 1) {
+                        currentAyahIdx++;
+                        updateAyahDisplay();
+                        isReciting = false;
+                        document.getElementById('recite-status').innerHTML = '<span style="color:#b8860b">تم الاستماع، يمكنك التلاوة أو الانتقال للآية التالية</span>';
+                        document.getElementById('recite-audio').classList.add('d-none');
+                        hideTafsir();
+                    } else {
+                        document.getElementById('recite-status').innerHTML = '<span style="color:#28a745">انتهت السورة! أحسنت</span>';
+                    }
+                };
+
+                updateAyahDisplay();
+            } catch (error) {
+                document.getElementById('mainContent').innerHTML = `<div class="container my-5"><div class="alert alert-danger text-center">حدث خطأ في تحميل السورة. يرجى المحاولة مرة أخرى.</div></div>`;
+            }
         }
         
         // Load random ayah for home page
